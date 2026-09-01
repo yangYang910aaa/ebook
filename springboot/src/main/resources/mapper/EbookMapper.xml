@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.EbookMapper">
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM ebook e
+        <where>
+            <if test="name != null and name != ''">AND e.name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="category2Id != null">AND e.category2_id = #{category2Id}</if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultType="com.example.demo.dto.EbookResp">
+        SELECT e.id, e.name, e.category1_id, e.category2_id, e.description, e.cover,
+               e.doc_count, e.view_count, e.vote_count,
+               c1.name AS category1_name, c2.name AS category2_name
+        FROM ebook e
+        LEFT JOIN category c1 ON e.category1_id = c1.id
+        LEFT JOIN category c2 ON e.category2_id = c2.id
+        <where>
+            <if test="name != null and name != ''">AND e.name LIKE CONCAT('%', #{name}, '%')</if>
+            <if test="category2Id != null">AND e.category2_id = #{category2Id}</if>
+        </where>
+        ORDER BY e.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectById" resultType="com.example.demo.entity.Ebook">
+        SELECT id, name, category1_id, category2_id, description, cover,
+               doc_count, view_count, vote_count
+        FROM ebook WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.entity.Ebook" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ebook (name, category1_id, category2_id, description, cover)
+        VALUES (#{name}, #{category1Id}, #{category2Id}, #{description}, #{cover})
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.entity.Ebook">
+        UPDATE ebook SET name = #{name}, category1_id = #{category1Id}, category2_id = #{category2Id},
+                         description = #{description}, cover = #{cover}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ebook WHERE id = #{id}
+    </delete>
+
+    <update id="updateStats">
+        UPDATE ebook SET doc_count = #{docCount}, view_count = #{viewCount}, vote_count = #{voteCount}
+        WHERE id = #{id}
+    </update>
+</mapper>

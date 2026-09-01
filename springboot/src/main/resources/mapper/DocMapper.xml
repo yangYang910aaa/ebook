@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.DocMapper">
+
+    <select id="selectByEbookId" resultType="com.example.demo.entity.Doc">
+        SELECT id, ebook_id, parent, name, sort, view_count, vote_count
+        FROM doc WHERE ebook_id = #{ebookId} ORDER BY sort, id
+    </select>
+
+    <select id="selectByParent" resultType="com.example.demo.entity.Doc">
+        SELECT id, ebook_id, parent, name, sort, view_count, vote_count
+        FROM doc WHERE parent = #{parent} ORDER BY sort, id
+    </select>
+
+    <select id="selectById" resultType="com.example.demo.entity.Doc">
+        SELECT id, ebook_id, parent, name, sort, view_count, vote_count
+        FROM doc WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.entity.Doc" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO doc (ebook_id, parent, name, sort)
+        VALUES (#{ebookId}, #{parent}, #{name}, #{sort})
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.entity.Doc">
+        UPDATE doc SET parent = #{parent}, name = #{name}, sort = #{sort} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByIds">
+        DELETE FROM doc WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <update id="incrementView">
+        UPDATE doc SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="incrementVote">
+        UPDATE doc SET vote_count = vote_count + 1 WHERE id = #{id}
+    </update>
+</mapper>

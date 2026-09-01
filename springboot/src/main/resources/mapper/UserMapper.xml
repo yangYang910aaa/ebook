@@ -8,9 +8,41 @@
         WHERE login_name = #{loginName}
     </select>
 
+    <select id="selectById" resultType="com.example.demo.entity.User">
+        SELECT id, login_name, name, password FROM user WHERE id = #{id}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM user
+        <where>
+            <if test="loginName != null and loginName != ''">AND login_name = #{loginName}</if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultType="com.example.demo.entity.User">
+        SELECT id, login_name, name, password FROM user
+        <where>
+            <if test="loginName != null and loginName != ''">AND login_name = #{loginName}</if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
     <insert id="insert" parameterType="com.example.demo.entity.User" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user (login_name, name, password)
         VALUES (#{loginName}, #{name}, #{password})
     </insert>
+
+    <update id="updateName" parameterType="com.example.demo.entity.User">
+        UPDATE user SET name = #{name} WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE user SET password = #{password} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
 
 </mapper>

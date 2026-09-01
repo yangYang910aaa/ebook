@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.CategoryMapper">
+
+    <select id="selectAll" resultType="com.example.demo.entity.Category">
+        SELECT id, parent, name, sort FROM category ORDER BY sort, id
+    </select>
+
+    <select id="selectByParent" resultType="com.example.demo.entity.Category">
+        SELECT id, parent, name, sort FROM category WHERE parent = #{parent} ORDER BY sort, id
+    </select>
+
+    <select id="selectById" resultType="com.example.demo.entity.Category">
+        SELECT id, parent, name, sort FROM category WHERE id = #{id}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM category
+        <where>
+            <if test="name != null and name != ''">AND name LIKE CONCAT('%', #{name}, '%')</if>
+        </where>
+    </select>
+
+    <select id="selectPage" resultType="com.example.demo.dto.CategoryResp">
+        SELECT c.id, c.parent, c.name, c.sort, p.name AS parent_name
+        FROM category c
+        LEFT JOIN category p ON c.parent = p.id
+        <where>
+            <if test="name != null and name != ''">AND c.name LIKE CONCAT('%', #{name}, '%')</if>
+        </where>
+        ORDER BY c.sort, c.id
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <insert id="insert" parameterType="com.example.demo.entity.Category" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (parent, name, sort) VALUES (#{parent}, #{name}, #{sort})
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.entity.Category">
+        UPDATE category SET parent = #{parent}, name = #{name}, sort = #{sort} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM category WHERE id = #{id}
+    </delete>
+</mapper>
