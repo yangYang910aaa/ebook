@@ -5,26 +5,27 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 统一响应体
+ * 统一响应体：{ success, message, content }
+ * 分页数据 content 为 { total, list }
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Result<T> {
 
-    private Integer code;
+    private Boolean success;
     private String message;
-    private T data;
+    private T content;
 
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "success", data);
+        return new Result<>(true, "success", data);
     }
 
     public static <T> Result<T> success() {
         return success(null);
     }
 
-    public static <T> Result<T> error(Integer code, String message) {
-        return new Result<>(code, message, null);
+    public static <T> Result<T> error(String message) {
+        return new Result<>(false, message, null);
     }
 }

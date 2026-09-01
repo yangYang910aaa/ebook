@@ -31,7 +31,7 @@ public class AuthController {
     @PostMapping("/login")
     public Result<Map<String, String>> login(@RequestBody LoginRequest request) {
         if (request.getUsername() == null || request.getUsername().isBlank()) {
-            return Result.error(400, "用户名不能为空");
+            return Result.error("用户名不能为空");
         }
         String token = jwtUtil.generateToken(request.getUsername());
         return Result.success(Map.of("token", token));

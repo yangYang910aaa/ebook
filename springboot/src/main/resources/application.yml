@@ -3,19 +3,19 @@ spring:
     name: demo
   datasource:
     # 本地 MySQL 连接，请改成你自己的账号密码
-    url: jdbc:mysql://localhost:3306/ebook?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/wiki?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&allowMultiQueries=true
     username: root
-    password: root
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       # 开发期：MySQL 未启动时也允许应用启动（首次真正查库时才连接）。连上数据库后可删掉此行。
       initialization-fail-timeout: -1
   data:
     redis:
-      # host: localhost
-      # port: 6379
-      # password:
-      # database: 0
+      host: 192.168.30.128
+      port: 6379
+      password: 123456
+      database: 0
   autoconfigure:
     exclude:
       # 还没有 RocketMQ 服务器时先排除其自动配置；部署 RocketMQ 后删除本行
@@ -28,7 +28,7 @@ mybatis:
     map-underscore-to-camel-case: true
 
 server:
-  port: 8080
+  port: 8088
 
 jwt:
   # 生产环境请换成足够长的随机密钥（不少于 32 字节）

@@ -20,3 +20,8 @@ dist/
 # IDE 通用
 .idea/
 *.iml
+
+# 规划工作文件（本地保留，不入库）
+task_plan.md
+findings.md
+progress.md
