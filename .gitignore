@@ -17,6 +17,13 @@ target/
 node_modules/
 dist/
 
+# pnpm 缓存/存储（沙箱重定向产生的本地缓存，不入库）
+.pnpm-store/
+.localappdata/
+.appdata/
+.npm-cache/
+.pnpm/
+
 # IDE 通用
 .idea/
 *.iml
