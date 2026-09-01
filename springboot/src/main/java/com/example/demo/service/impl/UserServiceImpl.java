@@ -1,14 +1,17 @@
 package com.example.demo.service.impl;
 
+import com.example.demo.common.BusinessException;
+import com.example.demo.common.ErrorCode;
 import com.example.demo.entity.User;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.service.UserService;
+import com.example.demo.util.Md5Util;
+import org.springframework.stereotype.Service;
 
 /**
- * 用户服务实现。
- * 注意：当前未加 @Service 注解，因为还没有 MySQL 数据源（MyBatis 的 Mapper Bean 未创建）。
- * 接入数据库后：1) 启用 application.yml 里的数据源配置  2) 给本类加上 @Service 注解。
+ * 用户服务实现
  */
+@Service
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
@@ -18,12 +21,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User findByUsername(String username) {
-        return userMapper.selectByUsername(username);
+    public User findByLoginName(String loginName) {
+        return userMapper.selectByLoginName(loginName);
     }
 
     @Override
     public int createUser(User user) {
         return userMapper.insert(user);
+    }
+
+    @Override
+    public User login(String loginName, String password) {
+        User user = userMapper.selectByLoginName(loginName);
+        if (user == null || !user.getPassword().equals(Md5Util.md5(password))) {
+            throw new BusinessException(ErrorCode.USER_NOT_EXIST.getCode(), ErrorCode.USER_NOT_EXIST.getMessage());
+        }
+        return user;
     }
 }

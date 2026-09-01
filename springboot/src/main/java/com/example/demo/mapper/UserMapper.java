@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface UserMapper {
 
-    User selectByUsername(@Param("username") String username);
+    User selectByLoginName(@Param("loginName") String loginName);
 
     int insert(User user);
 }

@@ -4,7 +4,9 @@ import com.example.demo.entity.User;
 
 public interface UserService {
 
-    User findByUsername(String username);
+    User findByLoginName(String loginName);
 
     int createUser(User user);
+
+    User login(String loginName, String password);
 }

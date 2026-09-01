@@ -19,7 +19,6 @@
 		<mybatis-spring-boot.version>4.1.0</mybatis-spring-boot.version>
 		<springdoc.version>3.1.0</springdoc.version>
 		<rocketmq.version>2.3.6</rocketmq.version>
-		<jjwt.version>0.13.0</jjwt.version>
 		<aliyun-oss.version>3.18.4</aliyun-oss.version>
 	</properties>
 
@@ -33,10 +32,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -69,24 +64,6 @@
 			<artifactId>rocketmq-spring-boot-starter</artifactId>
 			<version>${rocketmq.version}</version>
 		</dependency>
-		<!-- JWT 无状态认证 -->
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-api</artifactId>
-			<version>${jjwt.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-impl</artifactId>
-			<version>${jjwt.version}</version>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt-jackson</artifactId>
-			<version>${jjwt.version}</version>
-			<scope>runtime</scope>
-		</dependency>
 		<!-- 阿里云 OSS 对象存储 -->
 		<dependency>
 			<groupId>com.aliyun.oss</groupId>
@@ -113,11 +90,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

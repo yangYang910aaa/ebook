@@ -30,11 +30,6 @@ mybatis:
 server:
   port: 8088
 
-jwt:
-  # 生产环境请换成足够长的随机密钥（不少于 32 字节）
-  secret: e-book-platform-demo-secret-key-please-change-0123456789
-  expire-hours: 24
-
 rocketmq:
   # name-server: 127.0.0.1:9876
   # producer:
