@@ -45,7 +45,7 @@
       <div v-if="userStore.isLogin">欢迎：{{ userStore.name }}</div>
     </a-layout-footer>
 
-    <a-modal v-model:open="loginVisible" title="登录" :footer="null" :mask-closable="false">
+    <a-modal v-model:visible="loginVisible" title="登录" :footer="null" :mask-closable="false">
       <a-form layout="vertical">
         <a-form-item label="登录名">
           <a-input v-model:value="loginForm.loginName" placeholder="请输入登录名" />
