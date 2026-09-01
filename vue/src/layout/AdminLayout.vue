@@ -15,7 +15,9 @@
       </div>
     </a-layout-header>
     <a-layout-content style="padding: 16px">
-      <router-view />
+      <div class="page-enter" style="max-width: 1200px; margin: 0 auto">
+        <router-view />
+      </div>
     </a-layout-content>
   </a-layout>
 </template>

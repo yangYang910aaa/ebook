@@ -33,8 +33,10 @@
         </a-menu>
       </a-layout-sider>
 
-      <a-layout-content style="padding: 16px">
-        <router-view />
+    <a-layout-content style="padding: 16px">
+        <div class="page-enter" style="max-width: 1200px; margin: 0 auto">
+          <router-view />
+        </div>
       </a-layout-content>
     </a-layout>
 
