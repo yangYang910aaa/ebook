@@ -50,4 +50,19 @@
         UPDATE ebook SET doc_count = #{docCount}, view_count = #{viewCount}, vote_count = #{voteCount}
         WHERE id = #{id}
     </update>
+
+    <update id="aggregateStats">
+        UPDATE ebook e
+        LEFT JOIN (
+            SELECT ebook_id,
+                   COUNT(*) AS doc_count,
+                   COALESCE(SUM(view_count), 0) AS view_count,
+                   COALESCE(SUM(vote_count), 0) AS vote_count
+            FROM doc
+            GROUP BY ebook_id
+        ) s ON e.id = s.ebook_id
+        SET e.doc_count = COALESCE(s.doc_count, 0),
+            e.view_count = COALESCE(s.view_count, 0),
+            e.vote_count = COALESCE(s.vote_count, 0)
+    </update>
 </mapper>

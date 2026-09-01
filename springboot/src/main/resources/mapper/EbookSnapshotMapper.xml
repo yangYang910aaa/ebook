@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.EbookSnapshotMapper">
+
+    <insert id="insertDailySnapshot">
+        INSERT INTO ebook_snapshot (ebook_id, `date`, view_count, vote_count, view_increase, vote_increase)
+        SELECT e.id, CURDATE(), e.view_count, e.vote_count,
+               e.view_count - COALESCE(y.view_count, 0),
+               e.vote_count - COALESCE(y.vote_count, 0)
+        FROM ebook e
+        LEFT JOIN ebook_snapshot y
+               ON y.ebook_id = e.id AND y.`date` = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ebook_snapshot s
+            WHERE s.ebook_id = e.id AND s.`date` = CURDATE()
+        )
+    </insert>
+
+    <select id="selectTodayStat" resultType="map">
+        SELECT COALESCE(SUM(view_count), 0) AS view_count,
+               COALESCE(SUM(vote_count), 0) AS vote_count
+        FROM ebook_snapshot
+        WHERE `date` = CURDATE()
+    </select>
+
+    <select id="selectYesterdayStat" resultType="map">
+        SELECT COALESCE(SUM(view_count), 0) AS view_count,
+               COALESCE(SUM(vote_count), 0) AS vote_count
+        FROM ebook_snapshot
+        WHERE `date` = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    </select>
+
+    <select id="selectTotalStat" resultType="map">
+        SELECT COALESCE(SUM(view_count), 0) AS view_count,
+               COALESCE(SUM(vote_count), 0) AS vote_count
+        FROM ebook
+    </select>
+
+    <select id="selectLast30Days" resultType="com.example.demo.dto.DailyStatResp">
+        SELECT DATE_FORMAT(`date`, '%Y-%m-%d') AS date,
+               COALESCE(SUM(view_increase), 0) AS viewIncrease,
+               COALESCE(SUM(vote_increase), 0) AS voteIncrease
+        FROM ebook_snapshot
+        WHERE `date` &gt;= #{startDate}
+        GROUP BY `date`
+        ORDER BY `date`
+    </select>
+</mapper>

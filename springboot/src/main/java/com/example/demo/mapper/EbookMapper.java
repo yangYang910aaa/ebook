@@ -32,4 +32,7 @@ public interface EbookMapper {
                     @Param("docCount") int docCount,
                     @Param("viewCount") int viewCount,
                     @Param("voteCount") int voteCount);
+
+    /** 定时聚合：按文档汇总各电子书的文档数/阅读数/点赞数 */
+    int aggregateStats();
 }

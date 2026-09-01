@@ -1,6 +1,7 @@
 package com.example.demo.service.impl;
 
 import com.example.demo.common.BusinessException;
+import com.example.demo.config.EbookProperties;
 import com.example.demo.dto.EbookReq;
 import com.example.demo.dto.EbookResp;
 import com.example.demo.dto.PageReq;
@@ -8,7 +9,6 @@ import com.example.demo.dto.PageResult;
 import com.example.demo.entity.Ebook;
 import com.example.demo.mapper.EbookMapper;
 import com.example.demo.service.EbookService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,15 +29,11 @@ public class EbookServiceImpl implements EbookService {
     private static final Set<String> ALLOWED_EXT = Set.of("jpg", "jpeg", "gif", "png");
 
     private final EbookMapper ebookMapper;
+    private final EbookProperties ebookProperties;
 
-    @Value("${ebook.cover-dir}")
-    private String coverDir;
-
-    @Value("${ebook.cover-url-prefix}")
-    private String coverUrlPrefix;
-
-    public EbookServiceImpl(EbookMapper ebookMapper) {
+    public EbookServiceImpl(EbookMapper ebookMapper, EbookProperties ebookProperties) {
         this.ebookMapper = ebookMapper;
+        this.ebookProperties = ebookProperties;
     }
 
     @Override
@@ -96,7 +92,7 @@ public class EbookServiceImpl implements EbookService {
         if (file.getSize() > MAX_SIZE) {
             throw new BusinessException("图片大小不能超过 10MB");
         }
-        File dir = new File(coverDir);
+        File dir = new File(ebookProperties.getCoverDir());
         if (!dir.exists() && !dir.mkdirs()) {
             throw new BusinessException("上传目录创建失败");
         }
@@ -106,6 +102,6 @@ public class EbookServiceImpl implements EbookService {
         } catch (IOException e) {
             throw new BusinessException("图片保存失败");
         }
-        return coverUrlPrefix + "/" + filename;
+        return ebookProperties.getCoverUrlPrefix() + "/" + filename;
     }
 }
