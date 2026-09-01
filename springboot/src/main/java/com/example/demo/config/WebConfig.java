@@ -20,6 +20,7 @@ public class WebConfig implements WebMvcConfigurer {
             "/doc/find-content/**",
             "/doc/vote/**",
             "/ebook-snapshot/**",
+            "/ws/**",
             "/api/hello",
             "/swagger-ui.html",
             "/swagger-ui/**",

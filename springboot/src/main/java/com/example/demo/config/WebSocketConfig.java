@@ -1,26 +1,26 @@
 package com.example.demo.config;
 
-import com.example.demo.websocket.ChatWebSocketHandler;
+import com.example.demo.websocket.NotifyWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 /**
- * WebSocket 实时消息配置
+ * WebSocket 配置：通知端点 /ws/{token}
  */
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final ChatWebSocketHandler chatWebSocketHandler;
+    private final NotifyWebSocketHandler notifyWebSocketHandler;
 
-    public WebSocketConfig(ChatWebSocketHandler chatWebSocketHandler) {
-        this.chatWebSocketHandler = chatWebSocketHandler;
+    public WebSocketConfig(NotifyWebSocketHandler notifyWebSocketHandler) {
+        this.notifyWebSocketHandler = notifyWebSocketHandler;
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(chatWebSocketHandler, "/ws/chat").setAllowedOrigins("*");
+        registry.addHandler(notifyWebSocketHandler, "/ws/{token}").setAllowedOrigins("*");
     }
 }

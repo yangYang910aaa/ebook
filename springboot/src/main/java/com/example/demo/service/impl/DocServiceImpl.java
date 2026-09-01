@@ -9,6 +9,7 @@ import com.example.demo.entity.Doc;
 import com.example.demo.mapper.ContentMapper;
 import com.example.demo.mapper.DocMapper;
 import com.example.demo.service.DocService;
+import com.example.demo.service.NotifyService;
 import com.example.demo.util.CopyUtil;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -28,11 +29,14 @@ public class DocServiceImpl implements DocService {
     private final DocMapper docMapper;
     private final ContentMapper contentMapper;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final NotifyService notifyService;
 
-    public DocServiceImpl(DocMapper docMapper, ContentMapper contentMapper, RedisTemplate<String, Object> redisTemplate) {
+    public DocServiceImpl(DocMapper docMapper, ContentMapper contentMapper,
+                          RedisTemplate<String, Object> redisTemplate, NotifyService notifyService) {
         this.docMapper = docMapper;
         this.contentMapper = contentMapper;
         this.redisTemplate = redisTemplate;
+        this.notifyService = notifyService;
     }
 
     @Override
@@ -129,7 +133,11 @@ public class DocServiceImpl implements DocService {
         if (Boolean.FALSE.equals(first)) {
             throw new BusinessException("您已点赞过");
         }
+        Doc doc = docMapper.selectById(id);
+        if (doc == null) {
+            throw new BusinessException("文档不存在");
+        }
         docMapper.incrementVote(id);
-        // WebSocket 点赞通知（阶段 7 接入）
+        notifyService.notifyVote(doc.getName(), ip);
     }
 }
