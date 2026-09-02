@@ -8,6 +8,7 @@ export interface DocNode {
   sort: number
   viewCount: number
   voteCount: number
+  liked?: boolean
   children: DocNode[]
 }
 
@@ -15,8 +16,8 @@ export function getAllDocs(ebookId: number) {
   return request.get<unknown, DocNode[]>('/doc/all', { params: { ebookId } })
 }
 
-export function findContent(id: number) {
-  return request.get<unknown, { id: number; content: string }>(`/doc/find-content/${id}`)
+export function findContent(id: number, count = true) {
+  return request.get<unknown, { id: number; content: string }>(`/doc/find-content/${id}`, { params: { count } })
 }
 
 export function saveDoc(data: {
@@ -36,4 +37,8 @@ export function deleteDocs(idsStr: string) {
 
 export function voteDoc(id: number) {
   return request.get<unknown, void>(`/doc/vote/${id}`)
+}
+
+export function unvoteDoc(id: number) {
+  return request.get<unknown, void>(`/doc/unvote/${id}`)
 }

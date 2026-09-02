@@ -7,6 +7,7 @@ import com.example.demo.dto.PageReq;
 import com.example.demo.dto.PageResult;
 import com.example.demo.entity.Category;
 import com.example.demo.mapper.CategoryMapper;
+import com.example.demo.mapper.EbookMapper;
 import com.example.demo.service.CategoryService;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +20,11 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryMapper categoryMapper;
+    private final EbookMapper ebookMapper;
 
-    public CategoryServiceImpl(CategoryMapper categoryMapper) {
+    public CategoryServiceImpl(CategoryMapper categoryMapper, EbookMapper ebookMapper) {
         this.categoryMapper = categoryMapper;
+        this.ebookMapper = ebookMapper;
     }
 
     @Override
@@ -38,6 +41,7 @@ public class CategoryServiceImpl implements CategoryService {
     public PageResult<CategoryResp> list(String name, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
         int pageSize = pageReq.getPageSize() == null || pageReq.getPageSize() < 1 ? 10 : pageReq.getPageSize();
+        pageSize = Math.min(pageSize, 1000);
         long total = categoryMapper.count(name);
         List<CategoryResp> list = categoryMapper.selectPage(name, (pageNum - 1) * pageSize, pageSize);
         return new PageResult<>(total, list);
@@ -48,9 +52,19 @@ public class CategoryServiceImpl implements CategoryService {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BusinessException("分类名称不能为空");
         }
+        long parent = req.getParent() == null ? 0L : req.getParent();
+        if (parent != 0) {
+            Category parentCategory = categoryMapper.selectById(parent);
+            if (parentCategory == null) {
+                throw new BusinessException("父分类不存在");
+            }
+            if (parentCategory.getParent().longValue() != 0) {
+                throw new BusinessException("只能挂载到一级分类下");
+            }
+        }
         if (req.getId() == null) {
             Category category = new Category();
-            category.setParent(req.getParent() == null ? 0L : req.getParent());
+            category.setParent(parent);
             category.setName(req.getName());
             category.setSort(req.getSort() == null ? 0 : req.getSort());
             categoryMapper.insert(category);
@@ -71,6 +85,12 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public void remove(Long id) {
+        if (categoryMapper.countByParent(id) > 0) {
+            throw new BusinessException("该分类下存在子分类，无法删除");
+        }
+        if (ebookMapper.countByCategory(id) > 0) {
+            throw new BusinessException("该分类已被电子书使用，无法删除");
+        }
         categoryMapper.deleteById(id);
     }
 }

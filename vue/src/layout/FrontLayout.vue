@@ -26,6 +26,7 @@
       <a-layout-sider width="220" theme="light">
         <a-menu mode="inline" :selected-keys="[selectedCategory]" style="height: 100%" @click="onCategoryClick">
           <a-menu-item key="welcome">欢迎</a-menu-item>
+          <a-menu-item key="all-ebooks">全部电子书</a-menu-item>
           <a-sub-menu v-for="c1 in categoryTree" :key="'c1-' + c1.id">
             <template #title>{{ c1.name }}</template>
             <a-menu-item v-for="c2 in c1.children" :key="'c2-' + c2.id">{{ c2.name }}</a-menu-item>
@@ -62,11 +63,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { useUserStore } from '../store/user'
 import { getCategoryList } from '../api/category'
 import { loginApi, logoutApi } from '../api/user'
 import { closeWebSocket, connectWebSocket } from '../utils/websocket'
+import { md5 } from '../utils/md5'
 
 interface CategoryNode {
   id: number
@@ -94,7 +96,8 @@ const selectedKeys = computed(() => {
 
 const selectedCategory = computed(() => {
   const category2Id = route.query.category2Id as string | undefined
-  return category2Id ? 'c2-' + category2Id : 'welcome'
+  if (category2Id) return 'c2-' + category2Id
+  return route.path === '/ebook' ? 'all-ebooks' : 'welcome'
 })
 
 onMounted(() => {
@@ -141,6 +144,8 @@ function onMenuClick({ key }: { key: string }) {
 function onCategoryClick({ key }: { key: string }) {
   if (key === 'welcome') {
     router.push('/')
+  } else if (key === 'all-ebooks') {
+    router.push('/ebook')
   } else if (key.startsWith('c2-')) {
     router.push({ path: '/ebook', query: { category2Id: key.replace('c2-', '') } })
   }
@@ -155,7 +160,7 @@ async function onLogin() {
   try {
     const resp = await loginApi({
       loginName: loginForm.value.loginName,
-      password: loginForm.value.password
+      password: md5(loginForm.value.password)
     })
     userStore.setUser(resp)
     loginVisible.value = false
@@ -170,14 +175,22 @@ async function onLogin() {
 }
 
 async function onLogout() {
-  try {
-    await logoutApi(userStore.token)
-  } catch {
-    // 忽略退出接口异常
-  }
-  userStore.clearUser()
-  closeWebSocket()
-  message.success('已退出登录')
-  router.push('/')
+  Modal.confirm({
+    title: '确认退出登录？',
+    content: '退出后将无法访问后台管理功能。',
+    okText: '退出',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await logoutApi(userStore.token)
+      } catch {
+        // 忽略退出接口异常
+      }
+      userStore.clearUser()
+      closeWebSocket()
+      message.success('已退出登录')
+      router.push('/')
+    }
+  })
 }
 </script>

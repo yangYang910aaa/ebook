@@ -15,6 +15,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,11 +41,12 @@ public class DocServiceImpl implements DocService {
     }
 
     @Override
-    public List<DocResp> all(Long ebookId) {
+    public List<DocResp> all(Long ebookId, String ip) {
         List<Doc> docs = docMapper.selectByEbookId(ebookId);
         Map<Long, DocResp> map = new HashMap<>();
         for (Doc doc : docs) {
             DocResp resp = CopyUtil.copy(doc, DocResp.class);
+            resp.setLiked(Boolean.TRUE.equals(redisTemplate.hasKey(voteKey(doc.getId(), ip))));
             map.put(resp.getId(), resp);
         }
         List<DocResp> roots = new ArrayList<>();
@@ -60,13 +62,15 @@ public class DocServiceImpl implements DocService {
     }
 
     @Override
-    public ContentResp findContent(Long id) {
+    public ContentResp findContent(Long id, boolean count) {
         Content content = contentMapper.selectById(id);
         if (content == null) {
             throw new BusinessException("文档内容不存在");
         }
-        // 打开文档阅读数 +1
-        docMapper.incrementView(id);
+        // 打开文档阅读数 +1（前台阅读计；后台编辑/预览传 count=false 不计）
+        if (count) {
+            docMapper.incrementView(id);
+        }
         return new ContentResp(content.getId(), content.getContent());
     }
 
@@ -79,9 +83,29 @@ public class DocServiceImpl implements DocService {
         if (req.getEbookId() == null) {
             throw new BusinessException("所属电子书不能为空");
         }
+        long parent = req.getParent() == null ? 0L : req.getParent();
+        if (parent != 0) {
+            Doc parentDoc = docMapper.selectById(parent);
+            if (parentDoc == null) {
+                throw new BusinessException("父文档不存在");
+            }
+            if (!parentDoc.getEbookId().equals(req.getEbookId())) {
+                throw new BusinessException("父文档必须属于同一电子书");
+            }
+            if (req.getId() != null) {
+                if (parent == req.getId()) {
+                    throw new BusinessException("不能将自身设为父文档");
+                }
+                List<Long> descendantIds = new ArrayList<>();
+                collectIds(req.getId(), descendantIds);
+                if (descendantIds.contains(parent)) {
+                    throw new BusinessException("不能将子文档设为父文档");
+                }
+            }
+        }
         Doc doc = new Doc();
         doc.setEbookId(req.getEbookId());
-        doc.setParent(req.getParent() == null ? 0L : req.getParent());
+        doc.setParent(parent);
         doc.setName(req.getName());
         doc.setSort(req.getSort() == null ? 0 : req.getSort());
         if (req.getId() == null) {
@@ -128,16 +152,37 @@ public class DocServiceImpl implements DocService {
 
     @Override
     public void vote(Long id, String ip) {
-        String key = "vote:" + ip + ":" + id;
-        Boolean first = redisTemplate.opsForValue().setIfAbsent(key, "1");
-        if (Boolean.FALSE.equals(first)) {
-            throw new BusinessException("您已点赞过");
-        }
         Doc doc = docMapper.selectById(id);
         if (doc == null) {
             throw new BusinessException("文档不存在");
         }
+        String key = voteKey(id, ip);
+        // TTL 半年：既保证"同一用户不可重复点赞"的语义，又避免 key 无限膨胀
+        Boolean first = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofDays(180));
+        if (Boolean.FALSE.equals(first)) {
+            // 需求文档：同一用户不可重复点赞，重复点赞给出提示，不重复计数
+            throw new BusinessException("您已点赞过");
+        }
         docMapper.incrementVote(id);
         notifyService.notifyVote(doc.getName(), ip);
+    }
+
+    @Override
+    public void unvote(Long id, String ip) {
+        Doc doc = docMapper.selectById(id);
+        if (doc == null) {
+            throw new BusinessException("文档不存在");
+        }
+        String key = voteKey(id, ip);
+        Boolean deleted = redisTemplate.delete(key);
+        if (Boolean.FALSE.equals(deleted)) {
+            // 尚未点赞，无需取消
+            throw new BusinessException("您尚未点赞");
+        }
+        docMapper.decrementVote(id);
+    }
+
+    private String voteKey(Long id, String ip) {
+        return "vote:" + ip + ":" + id;
     }
 }

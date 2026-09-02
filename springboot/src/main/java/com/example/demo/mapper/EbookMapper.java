@@ -15,6 +15,9 @@ public interface EbookMapper {
 
     long count(@Param("name") String name, @Param("category2Id") Long category2Id);
 
+    /** 引用该分类（一级或二级）的电子书数量 */
+    long countByCategory(@Param("id") Long id);
+
     List<EbookResp> selectPage(@Param("name") String name,
                                @Param("category2Id") Long category2Id,
                                @Param("offset") int offset,

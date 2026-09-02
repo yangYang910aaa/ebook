@@ -160,7 +160,8 @@ async function selectDoc(id: string) {
   selectedKey.value = id
   const node = findNode(docs.value, id)
   if (!node) return
-  const resp = await findContent(Number(id))
+  // 后台编辑/预览不计阅读数（count=false）
+  const resp = await findContent(Number(id), false)
   Object.assign(form, {
     id: node.id,
     name: node.name,

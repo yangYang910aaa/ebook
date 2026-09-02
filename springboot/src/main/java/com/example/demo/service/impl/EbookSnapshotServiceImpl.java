@@ -26,29 +26,32 @@ public class EbookSnapshotServiceImpl implements EbookSnapshotService {
     @Override
     public StatisticResp getStatistic() {
         Map<String, Object> total = ebookSnapshotMapper.selectTotalStat();
-        Map<String, Object> today = ebookSnapshotMapper.selectTodayStat();
-        Map<String, Object> yesterday = ebookSnapshotMapper.selectYesterdayStat();
+        Map<String, Object> latest = ebookSnapshotMapper.selectLatestSnapshotStat();
+        Map<String, Object> prev = ebookSnapshotMapper.selectPrevSnapshotStat();
 
         long totalView = toLong(total.get("view_count"));
         long totalVote = toLong(total.get("vote_count"));
-        long todayView = toLong(today.get("view_count"));
-        long todayVote = toLong(today.get("vote_count"));
-        long yesterdayView = toLong(yesterday.get("view_count"));
 
-        // 今日快照未生成时回退到 ebook 实时总量，保证首页始终有数据
-        if (todayView == 0 && totalView > 0) {
-            todayView = totalView;
-            todayVote = totalVote;
-        }
+        // 最近一次快照作为"今日"基线（快照每日 00:30 生成，值为该时刻累计量）
+        // 今日阅读/点赞 = 实时总量 - 基线，即最近快照之后新增的量
+        boolean hasSnapshot = latest.get("max_date") != null;
+        long baselineView = hasSnapshot ? toLong(latest.get("view_count")) : 0;
+        long baselineVote = hasSnapshot ? toLong(latest.get("vote_count")) : 0;
+        long todayView = hasSnapshot ? Math.max(0, totalView - baselineView) : 0;
+        long todayVote = hasSnapshot ? Math.max(0, totalVote - baselineVote) : 0;
 
         double voteRate = totalView == 0 ? 0.0 : round2(totalVote * 100.0 / totalView);
 
-        // 预计今日阅读：按已过时间占全天比例推算
+        // 预计今日阅读：按已过时间占全天比例线性外推（增量口径）
         int minutes = LocalTime.now().getHour() * 60 + LocalTime.now().getMinute();
         int elapsed = Math.max(minutes, 1);
         long estimatedToday = todayView * 1440L / elapsed;
 
-        // 预计今日阅读增长率（对比昨日）
+        // 昨日阅读增量：最近两次快照累计之差（与快照日增量口径一致）
+        long prevView = hasSnapshot ? toLong(prev.get("view_count")) : 0;
+        long yesterdayView = hasSnapshot ? Math.max(0, baselineView - prevView) : 0;
+
+        // 预计今日阅读增长率（对比昨日增量）
         double growth = yesterdayView > 0
                 ? round2((estimatedToday - yesterdayView) * 100.0 / yesterdayView)
                 : 0.0;

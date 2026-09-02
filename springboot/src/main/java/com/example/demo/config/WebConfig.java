@@ -19,6 +19,7 @@ public class WebConfig implements WebMvcConfigurer {
             "/doc/all",
             "/doc/find-content/**",
             "/doc/vote/**",
+            "/doc/unvote/**",
             "/ebook-snapshot/**",
             "/ws/**",
             "/api/hello",

@@ -17,5 +17,6 @@ public class DocResp {
     private Integer sort;
     private Integer viewCount;
     private Integer voteCount;
+    private Boolean liked;
     private List<DocResp> children = new ArrayList<>();
 }

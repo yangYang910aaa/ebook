@@ -19,4 +19,7 @@ public interface ContentMapper {
     int update(Content content);
 
     int deleteByIds(@Param("ids") List<Long> ids);
+
+    /** 删除某电子书下全部文档的内容（content.id = doc.id） */
+    int deleteByEbookId(@Param("ebookId") Long ebookId);
 }

@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { queryEbooks, type EbookRow } from '../api/ebook'
 import { getCategoryList } from '../api/category'
@@ -47,7 +47,12 @@ const broken = reactive<Record<number, boolean>>({})
 
 const categoryName = ref(route.query.category2Id ? '分类' : '全部电子书')
 
-onMounted(async () => {
+onMounted(refresh)
+
+// 左侧菜单切换分类：路由 query 变化时组件被复用，需监听并重新加载
+watch(() => route.query.category2Id, refresh)
+
+async function refresh() {
   const category2Id = Number(route.query.category2Id || 0)
   if (category2Id) {
     try {
@@ -57,9 +62,12 @@ onMounted(async () => {
     } catch {
       // 忽略
     }
+  } else {
+    categoryName.value = '全部电子书'
   }
+  pageNum.value = 1
   await load()
-})
+}
 
 async function load() {
   const category2Id = Number(route.query.category2Id || 0) || undefined

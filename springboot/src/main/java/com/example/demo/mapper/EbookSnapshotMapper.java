@@ -16,15 +16,18 @@ public interface EbookSnapshotMapper {
     /** 为所有电子书生成当天快照（已存在则不插入），增量对比昨日 */
     int insertDailySnapshot();
 
-    /** 今日快照聚合：view_count / vote_count 总和 */
-    Map<String, Object> selectTodayStat();
+    /** 最近一次快照（基线）：max_date / view_count / vote_count */
+    Map<String, Object> selectLatestSnapshotStat();
 
-    /** 昨日快照聚合：view_count / vote_count 总和 */
-    Map<String, Object> selectYesterdayStat();
+    /** 最近第二次快照：view_count / vote_count */
+    Map<String, Object> selectPrevSnapshotStat();
 
     /** ebook 表总量：总阅读 / 总点赞 */
     Map<String, Object> selectTotalStat();
 
     /** 近 30 天日增量（按日期聚合） */
     List<DailyStatResp> selectLast30Days(@Param("startDate") String startDate);
+
+    /** 删除某电子书的全部快照 */
+    int deleteByEbookId(@Param("ebookId") Long ebookId);
 }

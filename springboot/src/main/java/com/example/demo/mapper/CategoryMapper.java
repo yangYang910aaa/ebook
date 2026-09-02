@@ -17,6 +17,9 @@ public interface CategoryMapper {
 
     List<Category> selectByParent(@Param("parent") Long parent);
 
+    /** 某分类下的子分类数量 */
+    long countByParent(@Param("parent") Long parent);
+
     Category selectById(@Param("id") Long id);
 
     long count(@Param("name") String name);

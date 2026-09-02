@@ -23,8 +23,11 @@ import java.util.regex.Pattern;
 @Service
 public class UserServiceImpl implements UserService {
 
-    /** 密码规则：6~32 位，至少包含数字和英文 */
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{6,32}$");
+    /**
+     * 前端已对明文做一次 MD5 再提交（需求"前端+后端双重加密"），
+     * 后端校验收到的是 32 位 MD5 十六进制；明文规则（6~32 位含数字英文）由前端加密前校验。
+     */
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^[0-9a-fA-F]{32}$");
 
     private final UserMapper userMapper;
 
@@ -55,6 +58,7 @@ public class UserServiceImpl implements UserService {
     public PageResult<UserResp> list(String loginName, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
         int pageSize = pageReq.getPageSize() == null || pageReq.getPageSize() < 1 ? 10 : pageReq.getPageSize();
+        pageSize = Math.min(pageSize, 1000);
         long total = userMapper.count(loginName);
         List<User> users = userMapper.selectPage(loginName, (pageNum - 1) * pageSize, pageSize);
         List<UserResp> list = new ArrayList<>();
@@ -63,6 +67,7 @@ public class UserServiceImpl implements UserService {
             resp.setId(user.getId());
             resp.setLoginName(user.getLoginName());
             resp.setName(user.getName());
+            resp.setPassword(user.getPassword());
             list.add(resp);
         }
         return new PageResult<>(total, list);
@@ -105,7 +110,7 @@ public class UserServiceImpl implements UserService {
 
     private void validatePassword(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
-            throw new BusinessException("密码需包含数字和英文，长度 6~32 位");
+            throw new BusinessException("密码格式不正确");
         }
     }
 }

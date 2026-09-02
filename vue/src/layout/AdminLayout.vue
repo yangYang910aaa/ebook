@@ -25,7 +25,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { Modal, message } from 'ant-design-vue'
 import { useUserStore } from '../store/user'
 import { logoutApi } from '../api/user'
 import { closeWebSocket } from '../utils/websocket'
@@ -44,14 +44,22 @@ function onMenuClick({ key }: { key: string }) {
 }
 
 async function onLogout() {
-  try {
-    await logoutApi(userStore.token)
-  } catch {
-    // 忽略
-  }
-  userStore.clearUser()
-  closeWebSocket()
-  message.success('已退出登录')
-  router.push('/')
+  Modal.confirm({
+    title: '确认退出登录？',
+    content: '退出后将无法访问后台管理功能。',
+    okText: '退出',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await logoutApi(userStore.token)
+      } catch {
+        // 忽略退出接口异常
+      }
+      userStore.clearUser()
+      closeWebSocket()
+      message.success('已退出登录')
+      router.push('/')
+    }
+  })
 }
 </script>

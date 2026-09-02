@@ -3,6 +3,7 @@
 -- 执行方式：mysql -uroot -p < seed.sql
 -- ============================================================
 
--- 初始管理员账号：admin / 123456（密码为 MD5(123456)）
+-- 初始管理员账号：admin / 123456
+-- 密码为双重 MD5（前端 MD5(明文) 后提交，后端再 MD5 存储）：md5(md5("123456"))
 INSERT IGNORE INTO wiki.`user` (login_name, name, password)
-VALUES ('admin', '管理员', 'e10adc3949ba59abbe56e057f20f883e');
+VALUES ('admin', '管理员', '14e1b600b1fd579f47433b88e8d85291');

@@ -18,8 +18,8 @@
           <div class="doc-meta">
             <span>阅读 {{ current.viewCount }}</span>
             <span>点赞 {{ current.voteCount }}</span>
-            <button class="vote-btn" :disabled="voting" @click="vote">
-              <span class="vote-heart">♥</span> 点赞
+            <button class="vote-btn" :class="{ liked: current.liked }" :disabled="voting" @click="vote">
+              <span class="vote-heart">♥</span> {{ current.liked ? '已点赞' : '点赞' }}
             </button>
           </div>
         </header>
@@ -36,7 +36,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { findContent, getAllDocs, voteDoc, type DocNode } from '../api/doc'
+import { findContent, getAllDocs, unvoteDoc, voteDoc, type DocNode } from '../api/doc'
 
 const route = useRoute()
 
@@ -111,16 +111,32 @@ async function openDoc(id: string) {
 
 async function vote() {
   if (!currentKey.value) return
+  const node = findNode(docs.value, currentKey.value)
+  if (!node) return
   voting.value = true
   try {
-    await voteDoc(Number(currentKey.value))
-    const node = findNode(docs.value, currentKey.value)
-    if (node) {
+    if (node.liked) {
+      // 已点赞 -> 取消点赞
+      await unvoteDoc(Number(currentKey.value))
+      node.liked = false
+      node.voteCount = Math.max(0, (node.voteCount || 0) - 1)
+      message.success('已取消点赞')
+    } else {
+      // 未点赞 -> 点赞
+      await voteDoc(Number(currentKey.value))
+      node.liked = true
       node.voteCount = (node.voteCount || 0) + 1
+      message.success('点赞成功')
     }
-    message.success('点赞成功')
-  } catch {
-    // 已点赞等提示由拦截器处理
+  } catch (err) {
+    // 重复点赞/尚未点赞等业务提示由拦截器弹出，这里同步按钮状态
+    const msg = (err as Error | null)?.message
+    if (msg === '您已点赞过' && !node.liked) {
+      node.liked = true
+    } else if (msg === '您尚未点赞' && node.liked) {
+      node.liked = false
+    }
+    // 错误提示由拦截器统一处理
   } finally {
     voting.value = false
   }
@@ -194,6 +210,16 @@ async function vote() {
 .vote-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.vote-btn.liked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.vote-btn.liked .vote-heart {
+  color: #fff;
 }
 
 .vote-heart {

@@ -16,18 +16,22 @@
         )
     </insert>
 
-    <select id="selectTodayStat" resultType="map">
-        SELECT COALESCE(SUM(view_count), 0) AS view_count,
+    <select id="selectLatestSnapshotStat" resultType="map">
+        SELECT MAX(`date`) AS max_date,
+               COALESCE(SUM(view_count), 0) AS view_count,
                COALESCE(SUM(vote_count), 0) AS vote_count
         FROM ebook_snapshot
-        WHERE `date` = CURDATE()
+        WHERE `date` = (SELECT MAX(`date`) FROM ebook_snapshot)
     </select>
 
-    <select id="selectYesterdayStat" resultType="map">
+    <select id="selectPrevSnapshotStat" resultType="map">
         SELECT COALESCE(SUM(view_count), 0) AS view_count,
                COALESCE(SUM(vote_count), 0) AS vote_count
         FROM ebook_snapshot
-        WHERE `date` = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        WHERE `date` = (
+            SELECT MAX(`date`) FROM ebook_snapshot
+            WHERE `date` &lt; (SELECT MAX(`date`) FROM ebook_snapshot)
+        )
     </select>
 
     <select id="selectTotalStat" resultType="map">
@@ -45,4 +49,8 @@
         GROUP BY `date`
         ORDER BY `date`
     </select>
+
+    <delete id="deleteByEbookId">
+        DELETE FROM ebook_snapshot WHERE ebook_id = #{ebookId}
+    </delete>
 </mapper>

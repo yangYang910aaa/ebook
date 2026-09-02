@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
+import { md5 } from '../../utils/md5'
 import {
   getUserListByPage,
   removeUser,
@@ -81,6 +82,7 @@ const resetOpen = ref(false)
 const resetId = ref(0)
 const resetPwd = ref('')
 const form = reactive({ id: 0, loginName: '', name: '', password: '' })
+const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,32}$/
 
 const columns = [
   { title: '登录名', dataIndex: 'loginName', key: 'loginName' },
@@ -143,7 +145,12 @@ async function save() {
       message.warning('请填写完整信息')
       return
     }
-    await saveUser({ loginName: form.loginName, name: form.name, password: form.password })
+    if (!PASSWORD_PATTERN.test(form.password)) {
+      message.warning('密码需包含数字和英文，长度 6~32 位')
+      return
+    }
+    // 前端先做一次 MD5，后端再做一次，形成双重加密
+    await saveUser({ loginName: form.loginName, name: form.name, password: md5(form.password) })
   }
   modalOpen.value = false
   message.success('保存成功')
@@ -161,7 +168,11 @@ async function resetPassword() {
     message.warning('请输入新密码')
     return
   }
-  await resetPasswordApi({ id: resetId.value, password: resetPwd.value })
+  if (!PASSWORD_PATTERN.test(resetPwd.value)) {
+    message.warning('密码需包含数字和英文，长度 6~32 位')
+    return
+  }
+  await resetPasswordApi({ id: resetId.value, password: md5(resetPwd.value) })
   resetOpen.value = false
   message.success('密码已重置')
 }

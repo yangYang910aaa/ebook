@@ -10,6 +10,10 @@
         </where>
     </select>
 
+    <select id="countByCategory" resultType="long">
+        SELECT COUNT(*) FROM ebook WHERE category1_id = #{id} OR category2_id = #{id}
+    </select>
+
     <select id="selectPage" resultType="com.example.demo.dto.EbookResp">
         SELECT e.id, e.name, e.category1_id, e.category2_id, e.description, e.cover,
                e.doc_count, e.view_count, e.vote_count,

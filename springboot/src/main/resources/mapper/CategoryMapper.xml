@@ -10,6 +10,10 @@
         SELECT id, parent, name, sort FROM category WHERE parent = #{parent} ORDER BY sort, id
     </select>
 
+    <select id="countByParent" resultType="long">
+        SELECT COUNT(*) FROM category WHERE parent = #{parent}
+    </select>
+
     <select id="selectById" resultType="com.example.demo.entity.Category">
         SELECT id, parent, name, sort FROM category WHERE id = #{id}
     </select>

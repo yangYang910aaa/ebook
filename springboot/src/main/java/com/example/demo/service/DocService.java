@@ -11,13 +11,15 @@ import java.util.List;
  */
 public interface DocService {
 
-    List<DocResp> all(Long ebookId);
+    List<DocResp> all(Long ebookId, String ip);
 
-    ContentResp findContent(Long id);
+    ContentResp findContent(Long id, boolean count);
 
     void save(DocReq req);
 
     void delete(String idsStr);
 
     void vote(Long id, String ip);
+
+    void unvote(Long id, String ip);
 }

@@ -31,11 +31,19 @@
         <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </delete>
 
+    <delete id="deleteByEbookId">
+        DELETE FROM doc WHERE ebook_id = #{ebookId}
+    </delete>
+
     <update id="incrementView">
         UPDATE doc SET view_count = view_count + 1 WHERE id = #{id}
     </update>
 
     <update id="incrementVote">
         UPDATE doc SET vote_count = vote_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrementVote">
+        UPDATE doc SET vote_count = GREATEST(vote_count - 1, 0) WHERE id = #{id}
     </update>
 </mapper>

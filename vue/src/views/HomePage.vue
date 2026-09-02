@@ -88,6 +88,15 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
       borderWidth: 0,
       textStyle: { color: '#f6f1e5' }
     },
+    toolbox: {
+      right: 20,
+      itemSize: 16,
+      iconStyle: { borderColor: '#6f675a' },
+      emphasis: { iconStyle: { borderColor: '#b03a2e' } },
+      feature: {
+        saveAsImage: { title: '保存为图片', name: '近30天趋势' }
+      }
+    },
     legend: {
       data: ['阅读增量', '点赞增量'],
       textStyle: { color: '#6f675a' },

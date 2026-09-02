@@ -24,7 +24,12 @@ public interface DocMapper {
 
     int deleteByIds(@Param("ids") List<Long> ids);
 
+    /** 删除某电子书下的全部文档 */
+    int deleteByEbookId(@Param("ebookId") Long ebookId);
+
     int incrementView(@Param("id") Long id);
 
     int incrementVote(@Param("id") Long id);
+
+    int decrementVote(@Param("id") Long id);
 }

@@ -4,18 +4,17 @@
       <div class="toolbar">
         <h3 class="display">分类管理</h3>
         <div class="actions">
-          <a-input v-model:value="queryName" placeholder="按名称模糊查询" allow-clear style="width: 200px" @press-enter="search" />
-          <a-button @click="search">查询</a-button>
+          <a-input v-model:value="queryName" placeholder="按名称模糊查询" allow-clear style="width: 200px" />
           <a-button type="primary" @click="openAdd">新增分类</a-button>
         </div>
       </div>
       <a-table
-        :data-source="list"
+        :data-source="treeList"
         :columns="columns"
-        :pagination="pagination"
+        :pagination="false"
         :loading="loading"
+        :default-expand-all-rows="true"
         row-key="id"
-        @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'parentName'">{{ record.parentName || '一级分类' }}</template>
@@ -53,14 +52,15 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
-import { getCategoryPage, getParents, removeCategory, saveCategory, type CategoryRow } from '../../api/category'
+import { getCategoryList, removeCategory, saveCategory, type CategoryRow } from '../../api/category'
 
-const list = ref<CategoryRow[]>([])
+interface CatNode extends CategoryRow {
+  children: CatNode[]
+}
+
+const allCats = ref<CategoryRow[]>([])
 const loading = ref(false)
 const queryName = ref('')
-const pageNum = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
 const parents = ref<CategoryRow[]>([])
 const modalOpen = ref(false)
 const form = reactive({ id: 0, name: '', parent: 0, sort: 0 })
@@ -73,44 +73,48 @@ const columns = [
   { title: '操作', key: 'action', width: 140 }
 ]
 
-const pagination = computed(() => ({
-  current: pageNum.value,
-  pageSize: pageSize.value,
-  total: total.value,
-  showSizeChanger: true,
-  showTotal: (t: number) => `共 ${t} 条`
-}))
-
-onMounted(async () => {
-  parents.value = await getParents()
-  await load()
-})
+onMounted(load)
 
 async function load() {
   loading.value = true
   try {
-    const data = await getCategoryPage({
-      name: queryName.value || undefined,
-      pageNum: pageNum.value,
-      pageSize: pageSize.value
-    })
-    list.value = data.list
-    total.value = data.total
+    allCats.value = await getCategoryList()
+    parents.value = allCats.value.filter((c) => c.parent === 0)
   } finally {
     loading.value = false
   }
 }
 
-function search() {
-  pageNum.value = 1
-  load()
-}
-
-function onTableChange(pg: { current: number; pageSize: number }) {
-  pageNum.value = pg.current
-  pageSize.value = pg.pageSize
-  load()
-}
+// 树形表格：一级分类为根、二级分类挂其下；按名称模糊过滤（命中保留其子树）
+const treeList = computed<CatNode[]>(() => {
+  const map = new Map<number, CatNode>()
+  allCats.value.forEach((c) => map.set(c.id, { ...c, children: [] }))
+  const roots: CatNode[] = []
+  map.forEach((c) => {
+    if (c.parent === 0) {
+      roots.push(c)
+    } else {
+      const parent = map.get(c.parent)
+      if (parent) {
+        c.parentName = parent.name
+        parent.children.push(c)
+      }
+    }
+  })
+  const kw = queryName.value.trim()
+  if (!kw) return roots
+  const filter = (nodes: CatNode[]): CatNode[] => {
+    const out: CatNode[] = []
+    for (const n of nodes) {
+      const kids = filter(n.children || [])
+      if (n.name.includes(kw) || kids.length) {
+        out.push({ ...n, children: kids })
+      }
+    }
+    return out
+  }
+  return filter(roots)
+})
 
 function openAdd() {
   Object.assign(form, { id: 0, name: '', parent: 0, sort: 0 })
@@ -130,7 +134,6 @@ async function save() {
   await saveCategory({ id: form.id || undefined, parent: form.parent, name: form.name, sort: form.sort })
   modalOpen.value = false
   message.success('保存成功')
-  parents.value = await getParents()
   await load()
 }
 

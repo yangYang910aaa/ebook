@@ -6,10 +6,16 @@ import com.example.demo.dto.EbookReq;
 import com.example.demo.dto.EbookResp;
 import com.example.demo.dto.PageReq;
 import com.example.demo.dto.PageResult;
+import com.example.demo.entity.Category;
 import com.example.demo.entity.Ebook;
+import com.example.demo.mapper.CategoryMapper;
+import com.example.demo.mapper.ContentMapper;
+import com.example.demo.mapper.DocMapper;
 import com.example.demo.mapper.EbookMapper;
+import com.example.demo.mapper.EbookSnapshotMapper;
 import com.example.demo.service.EbookService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -30,16 +36,27 @@ public class EbookServiceImpl implements EbookService {
 
     private final EbookMapper ebookMapper;
     private final EbookProperties ebookProperties;
+    private final CategoryMapper categoryMapper;
+    private final DocMapper docMapper;
+    private final ContentMapper contentMapper;
+    private final EbookSnapshotMapper ebookSnapshotMapper;
 
-    public EbookServiceImpl(EbookMapper ebookMapper, EbookProperties ebookProperties) {
+    public EbookServiceImpl(EbookMapper ebookMapper, EbookProperties ebookProperties,
+                            CategoryMapper categoryMapper, DocMapper docMapper,
+                            ContentMapper contentMapper, EbookSnapshotMapper ebookSnapshotMapper) {
         this.ebookMapper = ebookMapper;
         this.ebookProperties = ebookProperties;
+        this.categoryMapper = categoryMapper;
+        this.docMapper = docMapper;
+        this.contentMapper = contentMapper;
+        this.ebookSnapshotMapper = ebookSnapshotMapper;
     }
 
     @Override
     public PageResult<EbookResp> query(String name, Long category2Id, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
         int pageSize = pageReq.getPageSize() == null || pageReq.getPageSize() < 1 ? 10 : pageReq.getPageSize();
+        pageSize = Math.min(pageSize, 1000);
         long total = ebookMapper.count(name, category2Id);
         List<EbookResp> list = ebookMapper.selectPage(name, category2Id, (pageNum - 1) * pageSize, pageSize);
         return new PageResult<>(total, list);
@@ -49,6 +66,14 @@ public class EbookServiceImpl implements EbookService {
     public void save(EbookReq req) {
         if (req.getName() == null || req.getName().isBlank()) {
             throw new BusinessException("电子书名称不能为空");
+        }
+        // 校验二级分类归属：若填了二级分类，其父分类必须等于所选一级分类
+        if (req.getCategory2Id() != null && req.getCategory2Id() != 0) {
+            Category c2 = categoryMapper.selectById(req.getCategory2Id());
+            long c1 = req.getCategory1Id() == null ? 0L : req.getCategory1Id();
+            if (c2 == null || c2.getParent().longValue() != c1) {
+                throw new BusinessException("二级分类与一级分类不匹配");
+            }
         }
         if (req.getId() == null) {
             Ebook ebook = new Ebook();
@@ -75,7 +100,12 @@ public class EbookServiceImpl implements EbookService {
     }
 
     @Override
+    @Transactional
     public void remove(Long id) {
+        // 级联删除：内容 -> 文档 -> 快照 -> 电子书（避免孤儿数据，非功能需求"级联删除避免垃圾数据"）
+        contentMapper.deleteByEbookId(id);
+        docMapper.deleteByEbookId(id);
+        ebookSnapshotMapper.deleteByEbookId(id);
         ebookMapper.deleteById(id);
     }
 
