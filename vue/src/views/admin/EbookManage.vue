@@ -17,23 +17,21 @@
         row-key="id"
         @change="onTableChange"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'cover'">
-            <img v-if="record.cover" :src="record.cover" class="cover-thumb" :alt="record.name" />
-            <span v-else class="cover-empty">-</span>
-          </template>
-          <template v-else-if="column.key === 'category'">
-            {{ record.category1Name || '未分类' }}<template v-if="record.category2Name"> / {{ record.category2Name }}</template>
-          </template>
-          <template v-else-if="column.key === 'action'">
-            <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" @click="goDocs(record)">文档管理</a-button>
-              <a-popconfirm title="确定删除该电子书？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
-                <a-button type="link" size="small" danger>删除</a-button>
-              </a-popconfirm>
-            </a-space>
-          </template>
+        <template #cover="{ record }">
+          <img v-if="record.cover" :src="record.cover" class="cover-thumb" :alt="record.name" />
+          <span v-else class="cover-empty">-</span>
+        </template>
+        <template #category="{ record }">
+          {{ record.category1Name || '未分类' }}<template v-if="record.category2Name"> / {{ record.category2Name }}</template>
+        </template>
+        <template #action="{ record }">
+          <a-space>
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="link" size="small" @click="goDocs(record)">文档管理</a-button>
+            <a-popconfirm title="确定删除该电子书？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
+              <a-button type="link" size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </a-space>
         </template>
       </a-table>
     </section>
@@ -101,13 +99,13 @@ const form = reactive({
 })
 
 const columns = [
-  { title: '封面', key: 'cover', width: 80 },
+  { title: '封面', key: 'cover', width: 80, slots: { customRender: 'cover' } },
   { title: '名称', dataIndex: 'name', key: 'name' },
-  { title: '分类', key: 'category', width: 160 },
+  { title: '分类', key: 'category', width: 160, slots: { customRender: 'category' } },
   { title: '文档数', dataIndex: 'docCount', key: 'docCount', width: 80 },
   { title: '阅读', dataIndex: 'viewCount', key: 'viewCount', width: 80 },
   { title: '点赞', dataIndex: 'voteCount', key: 'voteCount', width: 80 },
-  { title: '操作', key: 'action', width: 220 }
+  { title: '操作', key: 'action', width: 220, slots: { customRender: 'action' } }
 ]
 
 const pagination = computed(() => ({

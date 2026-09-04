@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +59,18 @@ public class DocServiceImpl implements DocService {
                 roots.add(resp);
             }
         }
+        // HashMap 遍历顺序不确定，构建树后需按 sort 递归排序，保证文档目录顺序正确
+        sortTree(roots);
         return roots;
+    }
+
+    private void sortTree(List<DocResp> nodes) {
+        nodes.sort(Comparator.comparingInt(DocResp::getSort));
+        for (DocResp node : nodes) {
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                sortTree(node.getChildren());
+            }
+        }
     }
 
     @Override

@@ -46,16 +46,40 @@
       <div v-if="userStore.isLogin">欢迎：{{ userStore.name }}</div>
     </a-layout-footer>
 
-    <a-modal v-model:visible="loginVisible" title="登录" :footer="null" :mask-closable="false">
-      <a-form layout="vertical">
-        <a-form-item label="登录名">
-          <a-input v-model:value="loginForm.loginName" placeholder="请输入登录名" />
-        </a-form-item>
-        <a-form-item label="密码">
-          <a-input-password v-model:value="loginForm.password" placeholder="请输入密码" @press-enter="onLogin" />
-        </a-form-item>
-        <a-button type="primary" block :loading="loggingIn" @click="onLogin">登录</a-button>
-      </a-form>
+    <a-modal
+      v-model:visible="loginVisible"
+      :footer="null"
+      :mask-closable="false"
+      :width="448"
+      :centered="true"
+      wrap-class-name="login-modal"
+    >
+      <div class="login-card">
+        <div class="login-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="login-emblem" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="30.5" fill="#2d2a24" />
+            <circle cx="32" cy="32" r="26" stroke="#b03a2e" stroke-width="1.4" stroke-dasharray="2 4" />
+            <path d="M32 21c-4.3-2.9-9.6-4.3-15.2-4.3V45c5.6 0 10.9 1.4 15.2 4.3 4.3-2.9 9.6-4.3 15.2-4.3V16.7C41.6 16.7 36.3 18.1 32 21Z" fill="#f6f1e5" />
+            <path d="M32 21v28.3" stroke="#2d2a24" stroke-width="1.5" />
+            <path d="M43.5 9.5v9.2l-2.7-1.8-2.5 1.8v-9.2h5.2Z" fill="#b03a2e" />
+          </svg>
+        </div>
+        <h2 class="login-title display">欢迎回来</h2>
+        <p class="login-sub">登录后即可进入后台，打理这座数字书房</p>
+
+        <div class="login-form">
+          <label class="login-label" for="login-name">登录名</label>
+          <a-input id="login-name" v-model:value="loginForm.loginName" size="large" placeholder="请输入登录名" @press-enter="onLogin" />
+          <label class="login-label" for="login-password">密码</label>
+          <a-input-password id="login-password" v-model:value="loginForm.password" size="large" placeholder="请输入密码" @press-enter="onLogin" />
+          <a-button class="login-btn" type="primary" block :loading="loggingIn" @click="onLogin">
+            {{ loggingIn ? '正在登录…' : '进入书房' }}
+          </a-button>
+        </div>
+
+        <p class="login-note">游客可自由浏览与阅读 · 后台管理需登录</p>
+      </div>
     </a-modal>
   </a-layout>
 </template>
@@ -194,3 +218,169 @@ async function onLogout() {
   })
 }
 </script>
+
+<style>
+/* ===== 登录弹窗（藏书票风格；弹窗渲染在 body 下，需全局样式） ===== */
+.login-modal .ant-modal-content {
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(176, 58, 46, 0.07), transparent 46%),
+    radial-gradient(circle at 92% 100%, rgba(47, 107, 95, 0.08), transparent 46%),
+    #fffdf7;
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 64px rgba(45, 42, 36, 0.24);
+  padding: 0;
+  animation: login-rise 0.32s ease both;
+}
+
+.login-modal .ant-modal-close {
+  color: var(--ink-soft);
+}
+
+.login-modal .ant-modal-close:hover {
+  color: var(--accent);
+}
+
+.login-card {
+  position: relative;
+  padding: 44px 46px 28px;
+  text-align: center;
+}
+
+/* 内衬线 + 四角饰（票证感） */
+.login-frame {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+  border: 1px solid rgba(176, 58, 46, 0.22);
+}
+
+.login-frame i {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent);
+}
+
+.login-frame i:nth-child(1) { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+.login-frame i:nth-child(2) { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+.login-frame i:nth-child(3) { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+.login-frame i:nth-child(4) { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+/* 印章徽记 */
+.login-emblem {
+  width: 86px;
+  height: 86px;
+  margin: 0 auto 18px;
+  animation: login-pop 0.5s ease 0.05s both;
+}
+
+.login-emblem svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 14px rgba(45, 42, 36, 0.28));
+}
+
+.login-title {
+  margin: 0 0 6px;
+  font-size: 27px;
+  color: var(--ink);
+  letter-spacing: 0.1em;
+  animation: login-rise 0.45s ease 0.12s both;
+}
+
+.login-sub {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  animation: login-rise 0.45s ease 0.18s both;
+}
+
+.login-form {
+  text-align: left;
+  animation: login-rise 0.45s ease 0.24s both;
+}
+
+.login-label {
+  display: block;
+  margin: 20px 0 4px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+/* 下划线式输入 */
+.login-modal .ant-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #cfc5ad;
+  border-radius: 0;
+  padding: 8px 2px;
+  font-size: 15px;
+  color: var(--ink);
+  box-shadow: none !important;
+}
+
+.login-modal .ant-input:focus,
+.login-modal .ant-input:hover {
+  border-bottom-color: var(--accent);
+}
+
+.login-modal .ant-input::placeholder {
+  color: #b3a992;
+}
+
+/* 赭红圆钮 */
+.login-btn.ant-btn {
+  height: 46px;
+  margin-top: 28px;
+  border-radius: 999px;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-size: 16px;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(176, 58, 46, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.login-btn.ant-btn:hover,
+.login-btn.ant-btn:focus {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(176, 58, 46, 0.3);
+}
+
+.login-note {
+  margin: 22px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #9a9182;
+  animation: login-rise 0.45s ease 0.3s both;
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes login-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+</style>

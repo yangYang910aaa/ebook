@@ -17,17 +17,15 @@
         row-key="id"
         @change="onTableChange"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'password'"><span class="mono">{{ record.password }}</span></template>
-          <template v-else-if="column.key === 'action'">
-            <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" @click="openReset(record)">重置密码</a-button>
-              <a-popconfirm title="确定删除该用户？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
-                <a-button type="link" size="small" danger>删除</a-button>
-              </a-popconfirm>
-            </a-space>
-          </template>
+        <template #password="{ record }"><span class="mono">{{ record.password }}</span></template>
+        <template #action="{ record }">
+          <a-space>
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-button type="link" size="small" @click="openReset(record)">重置密码</a-button>
+            <a-popconfirm title="确定删除该用户？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
+              <a-button type="link" size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </a-space>
         </template>
       </a-table>
     </section>
@@ -87,8 +85,8 @@ const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{6,32}$/
 const columns = [
   { title: '登录名', dataIndex: 'loginName', key: 'loginName' },
   { title: '昵称', dataIndex: 'name', key: 'name' },
-  { title: '密码（密文）', dataIndex: 'password', key: 'password', width: 220 },
-  { title: '操作', key: 'action', width: 240 }
+  { title: '密码（密文）', dataIndex: 'password', key: 'password', width: 220, slots: { customRender: 'password' } },
+  { title: '操作', key: 'action', width: 240, slots: { customRender: 'action' } }
 ]
 
 const pagination = computed(() => ({

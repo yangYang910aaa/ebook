@@ -16,16 +16,14 @@
         :default-expand-all-rows="true"
         row-key="id"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'parentName'">{{ record.parentName || '一级分类' }}</template>
-          <template v-else-if="column.key === 'action'">
-            <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-popconfirm title="确定删除该分类？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
-                <a-button type="link" size="small" danger>删除</a-button>
-              </a-popconfirm>
-            </a-space>
-          </template>
+        <template #parentName="{ record }">{{ record.parentName || '一级分类' }}</template>
+        <template #action="{ record }">
+          <a-space>
+            <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
+            <a-popconfirm title="确定删除该分类？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
+              <a-button type="link" size="small" danger>删除</a-button>
+            </a-popconfirm>
+          </a-space>
         </template>
       </a-table>
     </section>
@@ -68,9 +66,9 @@ const form = reactive({ id: 0, name: '', parent: 0, sort: 0 })
 const columns = [
   { title: '编号', dataIndex: 'id', key: 'id', width: 80 },
   { title: '名称', dataIndex: 'name', key: 'name' },
-  { title: '父分类', key: 'parentName' },
+  { title: '父分类', key: 'parentName', slots: { customRender: 'parentName' } },
   { title: '排序', dataIndex: 'sort', key: 'sort', width: 90 },
-  { title: '操作', key: 'action', width: 140 }
+  { title: '操作', key: 'action', width: 140, slots: { customRender: 'action' } }
 ]
 
 onMounted(load)
