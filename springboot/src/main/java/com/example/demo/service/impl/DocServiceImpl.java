@@ -65,7 +65,7 @@ public class DocServiceImpl implements DocService {
     }
 
     private void sortTree(List<DocResp> nodes) {
-        nodes.sort(Comparator.comparingInt(DocResp::getSort));
+        nodes.sort(Comparator.comparingInt(d -> d.getSort() == null ? 0 : d.getSort()));
         for (DocResp node : nodes) {
             if (node.getChildren() != null && !node.getChildren().isEmpty()) {
                 sortTree(node.getChildren());

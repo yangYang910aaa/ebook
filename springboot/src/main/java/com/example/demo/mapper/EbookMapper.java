@@ -31,11 +31,6 @@ public interface EbookMapper {
 
     int deleteById(@Param("id") Long id);
 
-    int updateStats(@Param("id") Long id,
-                    @Param("docCount") int docCount,
-                    @Param("viewCount") int viewCount,
-                    @Param("voteCount") int voteCount);
-
     /** 定时聚合：按文档汇总各电子书的文档数/阅读数/点赞数 */
     int aggregateStats();
 }

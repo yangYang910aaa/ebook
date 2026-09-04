@@ -1,5 +1,5 @@
 import request from './request'
-import type { PageResult } from './user'
+import type { PageResult } from './types'
 
 export interface EbookRow {
   id: number

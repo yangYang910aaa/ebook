@@ -1,5 +1,4 @@
 import request from './request'
-import type { PageResult } from './user'
 
 export interface CategoryRow {
   id: number
@@ -15,10 +14,6 @@ export function getCategoryList() {
 
 export function getParents() {
   return request.get<unknown, CategoryRow[]>('/category/getParents')
-}
-
-export function getCategoryPage(params: { name?: string; pageNum: number; pageSize: number }) {
-  return request.get<unknown, PageResult<CategoryRow>>('/category/list', { params })
 }
 
 export function saveCategory(data: { id?: number; parent?: number; name: string; sort?: number }) {

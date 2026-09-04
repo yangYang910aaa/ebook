@@ -36,16 +36,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User findByLoginName(String loginName) {
-        return userMapper.selectByLoginName(loginName);
-    }
-
-    @Override
-    public int createUser(User user) {
-        return userMapper.insert(user);
-    }
-
-    @Override
     public User login(String loginName, String password) {
         User user = userMapper.selectByLoginName(loginName);
         if (user == null || !user.getPassword().equals(Md5Util.md5(password))) {

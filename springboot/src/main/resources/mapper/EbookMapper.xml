@@ -50,11 +50,6 @@
         DELETE FROM ebook WHERE id = #{id}
     </delete>
 
-    <update id="updateStats">
-        UPDATE ebook SET doc_count = #{docCount}, view_count = #{viewCount}, vote_count = #{voteCount}
-        WHERE id = #{id}
-    </update>
-
     <update id="aggregateStats">
         UPDATE ebook e
         LEFT JOIN (

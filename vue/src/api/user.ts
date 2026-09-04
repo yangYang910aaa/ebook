@@ -1,15 +1,11 @@
 import request from './request'
+import type { PageResult } from './types'
 
 export interface LoginResp {
   token: string
   id: number
   loginName: string
   name: string
-}
-
-export interface PageResult<T> {
-  total: number
-  list: T[]
 }
 
 export function loginApi(data: { loginName: string; password: string }) {
@@ -28,6 +24,7 @@ export interface UserRow {
   id: number
   loginName: string
   name: string
+  password?: string
 }
 
 export function saveUser(data: { id?: number; loginName?: string; name: string; password?: string }) {
