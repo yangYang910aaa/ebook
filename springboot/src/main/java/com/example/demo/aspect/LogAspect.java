@@ -25,6 +25,10 @@ import java.util.Map;
 @Component
 public class LogAspect {
 
+    /**
+     * 环绕通知：拦截所有 Controller 方法，生成雪花日志流水号（写入 MDC LOG_ID）、
+     * 记录请求 URI/方法/IP/脱敏参数/耗时/返回结果或异常，finally 中清理 MDC
+     */
     @Around("execution(* com.example.demo.controller..*.*(..))")
     public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
         String logId = String.valueOf(SnowflakeIdWorker.getInstance().nextId());
@@ -59,6 +63,10 @@ public class LogAspect {
         }
     }
 
+    /**
+     * 参数脱敏序列化：将方法参数转为日志字符串，password/file 字段替换为 ***，
+     * 跳过 HttpServletRequest/Response，Map 和 JavaBean 递归脱敏
+     */
     private String maskArgs(Object[] args) {
         if (args == null || args.length == 0) {
             return "";
@@ -82,6 +90,7 @@ public class LogAspect {
         return String.join(", ", parts);
     }
 
+    // Map 类型参数脱敏：key 含 password/file 的值替换为 ***
     private String maskMap(Map<?, ?> map) {
         List<String> parts = new ArrayList<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -95,6 +104,7 @@ public class LogAspect {
         return "{" + String.join(", ", parts) + "}";
     }
 
+    // JavaBean 类型参数脱敏：反射遍历所有字段，password/file 字段值替换为 ***
     private String maskBean(Object obj) {
         try {
             List<String> parts = new ArrayList<>();
@@ -114,6 +124,7 @@ public class LogAspect {
         }
     }
 
+    // 判断是否为简单类型（直接 toString 即可，无需反射脱敏）
     private boolean isSimpleType(Object arg) {
         return arg instanceof String
                 || arg instanceof Number

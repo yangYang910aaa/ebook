@@ -36,43 +36,52 @@
       </a-table>
     </section>
 
-    <a-modal v-model:visible="modalOpen" :title="form.id ? '编辑电子书' : '新增电子书'" :width="560" @ok="save">
-      <a-form layout="vertical">
-        <a-form-item label="封面">
-          <a-upload
-            :show-upload-list="false"
-            :custom-request="customUpload"
-            accept="image/*"
-          >
-            <div v-if="form.cover" class="cover-upload">
+    <a-modal v-model:visible="modalOpen" :width="680" ok-text="确定" cancel-text="取消" @ok="save">
+      <template #title>
+        <span class="modal-title">{{ form.id ? '编辑电子书' : '新增电子书' }}</span>
+      </template>
+      <div class="ebook-form">
+        <div class="cover-section">
+          <div class="field-label">封面</div>
+          <a-upload :show-upload-list="false" :custom-request="customUpload" accept="image/*">
+            <div v-if="form.cover" class="cover-box has-cover">
               <img :src="form.cover" alt="封面" />
-              <span class="cover-replace">点击更换</span>
+              <div class="cover-mask">点击更换</div>
             </div>
-            <div v-else class="cover-upload cover-placeholder">点击上传封面<br />jpg/png/gif ≤ 10MB</div>
+            <div v-else class="cover-box empty">
+              <div class="cover-plus">+</div>
+              <div class="cover-hint">点击上传封面</div>
+              <div class="cover-sub">jpg / png / gif ≤ 10MB</div>
+            </div>
           </a-upload>
-        </a-form-item>
-        <a-form-item label="名称">
-          <a-input v-model:value="form.name" placeholder="请输入电子书名称" />
-        </a-form-item>
-        <a-form-item label="分类">
-          <a-space>
-            <a-select v-model:value="form.category1Id" placeholder="一级分类" style="width: 220px" @change="onCategory1Change">
-              <a-select-option v-for="c in category1List" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
-            </a-select>
-            <a-select v-model:value="form.category2Id" placeholder="二级分类" style="width: 220px">
-              <a-select-option v-for="c in category2List" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
-            </a-select>
-          </a-space>
-        </a-form-item>
-        <a-form-item label="描述">
-          <a-textarea v-model:value="form.description" :rows="3" placeholder="电子书简介" />
-        </a-form-item>
-      </a-form>
+        </div>
+        <div class="fields-section">
+          <a-form layout="vertical">
+            <a-form-item label="名称">
+              <a-input v-model:value="form.name" placeholder="请输入电子书名称" />
+            </a-form-item>
+            <a-form-item label="分类">
+              <div class="category-row">
+                <a-select v-model:value="form.category1Id" placeholder="一级分类" @change="onCategory1Change">
+                  <a-select-option v-for="c in category1List" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+                </a-select>
+                <a-select v-model:value="form.category2Id" placeholder="二级分类">
+                  <a-select-option v-for="c in category2List" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
+                </a-select>
+              </div>
+            </a-form-item>
+            <a-form-item label="描述">
+              <a-textarea v-model:value="form.description" :rows="4" placeholder="电子书简介，支持多行" />
+            </a-form-item>
+          </a-form>
+        </div>
+      </div>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
+/* 电子书管理（后台）：电子书分页列表、模糊搜索、新增/编辑/删除、封面上传、跳转文档管理 */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -116,7 +125,9 @@ const pagination = computed(() => ({
   showTotal: (t: number) => `共 ${t} 条`
 }))
 
+// 一级分类列表（parent=0）
 const category1List = computed(() => allCategories.value.filter((c) => c.parent === 0))
+// 二级分类列表：根据当前选中的一级分类动态筛选
 const category2List = computed(() =>
   allCategories.value.filter((c) => c.parent === form.category1Id)
 )
@@ -126,6 +137,7 @@ onMounted(async () => {
   await load()
 })
 
+// 分页加载电子书列表
 async function load() {
   loading.value = true
   try {
@@ -141,22 +153,26 @@ async function load() {
   }
 }
 
+// 搜索：重置到第一页再加载
 function search() {
   pageNum.value = 1
   load()
 }
 
+// 表格分页变化
 function onTableChange(pg: { current: number; pageSize: number }) {
   pageNum.value = pg.current
   pageSize.value = pg.pageSize
   load()
 }
 
+// 打开新增弹窗：重置表单
 function openAdd() {
   Object.assign(form, { id: 0, name: '', category1Id: undefined, category2Id: undefined, description: '', cover: '' })
   modalOpen.value = true
 }
 
+// 打开编辑弹窗：回填当前电子书数据
 function openEdit(record: EbookRow) {
   Object.assign(form, {
     id: record.id,
@@ -169,10 +185,12 @@ function openEdit(record: EbookRow) {
   modalOpen.value = true
 }
 
+// 一级分类变化时清空已选的二级分类（级联联动）
 function onCategory1Change() {
   form.category2Id = undefined
 }
 
+// 自定义封面上传：调用上传接口，成功后将返回的 URL 存入表单
 function customUpload(options: { file: File; onSuccess: (body: unknown) => void; onError: (err: Error) => void }) {
   uploadCover(options.file)
     .then((url) => {
@@ -185,6 +203,7 @@ function customUpload(options: { file: File; onSuccess: (body: unknown) => void;
     })
 }
 
+// 保存电子书：新增（id=0）或更新
 async function save() {
   if (!form.name.trim()) {
     message.warning('请输入电子书名称')
@@ -203,12 +222,14 @@ async function save() {
   await load()
 }
 
+// 删除电子书
 async function remove(record: EbookRow) {
   await removeEbook(record.id)
   message.success('删除成功')
   await load()
 }
 
+// 跳转到该电子书的文档管理页面
 function goDocs(record: EbookRow) {
   router.push({ path: '/admin/doc', query: { ebookId: record.id } })
 }
@@ -252,37 +273,147 @@ function goDocs(record: EbookRow) {
   color: var(--ink-soft);
 }
 
-.cover-upload {
-  width: 120px;
-  height: 150px;
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
-  text-align: center;
-  font-size: 13px;
-  color: var(--ink-soft);
-  background: var(--paper);
+/* ===== 编辑弹窗美化 ===== */
+.modal-title {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.02em;
 }
 
-.cover-upload img {
+.ebook-form {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+.cover-section {
+  flex-shrink: 0;
+}
+
+.field-label {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.cover-box {
+  width: 170px;
+  height: 215px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.cover-box:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.cover-box.has-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-.cover-replace {
+.cover-box.has-cover .cover-mask {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(45, 42, 36, 0.6);
+  inset: 0;
+  background: rgba(45, 42, 36, 0.55);
   color: #fff;
-  font-size: 12px;
-  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.cover-box.has-cover:hover .cover-mask {
+  opacity: 1;
+}
+
+.cover-box.empty {
+  border: 1.5px dashed var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: border-color 0.2s, background 0.2s;
+  box-shadow: none;
+}
+
+.cover-box.empty:hover {
+  border-color: var(--accent-soft);
+  background: #faf5ea;
+  transform: none;
+}
+
+.cover-plus {
+  font-size: 34px;
+  color: var(--accent-soft);
+  line-height: 1;
+  font-weight: 300;
+}
+
+.cover-hint {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.cover-sub {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.fields-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-row {
+  display: flex;
+  gap: 10px;
+}
+
+.category-row :deep(.ant-select) {
+  flex: 1;
+  min-width: 0;
+}
+
+.fields-section :deep(.ant-form-item-label > label) {
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.fields-section :deep(.ant-input),
+.fields-section :deep(.ant-select-selector),
+.fields-section :deep(.ant-input-affix-wrapper) {
+  border-radius: 6px;
+}
+
+.fields-section :deep(.ant-input):hover,
+.fields-section :deep(.ant-select-selector:hover) {
+  border-color: var(--accent-soft);
+}
+
+.fields-section :deep(.ant-input):focus,
+.fields-section :deep(.ant-input-focused),
+.fields-section :deep(.ant-select-focused .ant-select-selector) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(176, 58, 46, 0.12);
 }
 </style>

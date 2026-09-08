@@ -17,6 +17,11 @@ import java.util.concurrent.Executor;
 @EnableAsync
 public class AsyncConfig implements AsyncConfigurer {
 
+    /**
+     * 配置 @Async 线程池：
+     * - 核心线程2、最大线程8、队列100，适合 IO 密集型异步任务（如通知推送）
+     * - 通过 TaskDecorator 将调用线程的 MDC（日志流水号）传递到异步线程，保证日志可追踪
+     */
     @Override
     @Bean(name = "taskExecutor")
     public Executor getAsyncExecutor() {
@@ -25,6 +30,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setMaxPoolSize(8);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("async-");
+        // TaskDecorator：捕获调用线程 MDC 上下文，在异步线程执行前恢复、执行后还原，防止 MDC 污染
         executor.setTaskDecorator(runnable -> {
             Map<String, String> context = MDC.getCopyOfContextMap();
             return () -> {

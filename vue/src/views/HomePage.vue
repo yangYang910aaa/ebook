@@ -55,6 +55,7 @@
 </template>
 
 <script setup lang="ts">
+/* 首页（前台）：平台统计数据卡片 + 近 30 天阅读/点赞趋势图（ECharts） */
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as echarts from 'echarts'
 import { get30Statistic, getStatistic, type StatisticResp } from '../api/stat'
@@ -65,6 +66,7 @@ let chart: echarts.ECharts | null = null
 
 onMounted(async () => {
   try {
+    // 并行请求汇总统计和近 30 天趋势
     const [statData, days] = await Promise.all([getStatistic(), get30Statistic()])
     stat.value = statData
     renderChart(days)
@@ -74,9 +76,10 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  chart?.dispose()
+  chart?.dispose() // 组件销毁时释放 ECharts 实例
 })
 
+// 渲染近 30 天趋势折线图（阅读增量 + 点赞增量双系列）
 function renderChart(days: { date: string; viewIncrease: number; voteIncrease: number }[]) {
   if (!chartRef.value) return
   chart = echarts.init(chartRef.value)

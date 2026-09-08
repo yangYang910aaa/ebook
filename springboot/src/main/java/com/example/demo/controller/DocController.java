@@ -20,7 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 文档管理
+ * 文档管理控制器：提供电子书章节（文档）的树形查询、内容读写、级联删除及点赞/取消点赞接口。
+ * 路径前缀 /doc，点赞基于客户端 IP 做防重。
  */
 @Tag(name = "文档管理")
 @RestController
@@ -33,12 +34,14 @@ public class DocController {
         this.docService = docService;
     }
 
+    /** GET /doc/all?ebookId= — 查询某电子书下全部文档，组装为树形结构，并标记当前 IP 是否已点赞 */
     @Operation(summary = "某电子书全部文档（树）")
     @GetMapping("/all")
     public Result<List<DocResp>> all(@RequestParam Long ebookId, HttpServletRequest request) {
         return Result.success(docService.all(ebookId, clientIp(request)));
     }
 
+    /** GET /doc/find-content/{id}?count= — 获取文档富文本内容；count=true 时阅读数 +1（后台预览传 false） */
     @Operation(summary = "获取文档富文本内容")
     @GetMapping("/find-content/{id}")
     public Result<ContentResp> findContent(@PathVariable Long id,
@@ -46,6 +49,7 @@ public class DocController {
         return Result.success(docService.findContent(id, count));
     }
 
+    /** POST /doc/save — 新增或编辑文档及其富文本内容（含父文档防环校验） */
     @Operation(summary = "保存文档及内容")
     @PostMapping("/save")
     public Result<Void> save(@RequestBody DocReq req) {
@@ -53,6 +57,7 @@ public class DocController {
         return Result.success();
     }
 
+    /** DELETE /doc/delete/{idsStr} — 级联删除文档（逗号分隔多个 id），同时删除其所有子文档及对应内容 */
     @Operation(summary = "级联删除文档（逗号分隔 id）")
     @DeleteMapping("/delete/{idsStr}")
     public Result<Void> delete(@PathVariable String idsStr) {
@@ -60,6 +65,7 @@ public class DocController {
         return Result.success();
     }
 
+    /** GET /doc/vote/{id} — 点赞文档，基于 IP + 文档 ID 的 Redis key 防重复点赞 */
     @Operation(summary = "点赞")
     @GetMapping("/vote/{id}")
     public Result<Void> vote(@PathVariable Long id, HttpServletRequest request) {
@@ -67,6 +73,7 @@ public class DocController {
         return Result.success();
     }
 
+    /** GET /doc/unvote/{id} — 取消点赞，删除 Redis 防重 key 并扣减点赞数 */
     @Operation(summary = "取消点赞")
     @GetMapping("/unvote/{id}")
     public Result<Void> unvote(@PathVariable Long id, HttpServletRequest request) {

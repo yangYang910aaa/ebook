@@ -10,7 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 通知服务：点赞等事件通过 WebSocket 异步推送，与业务解耦
+ * 通知服务：将点赞等业务事件通过 WebSocket 异步推送给所有在线客户端，与主业务流程解耦。
+ * 使用 @Async 异步执行，避免通知发送阻塞业务线程；发送失败仅记录日志，不影响主流程。
  */
 @Slf4j
 @Service

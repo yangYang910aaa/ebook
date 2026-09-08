@@ -7,8 +7,12 @@ import lombok.Data;
  */
 @Data
 public class UserResp {
+    // 用户ID
     private Long id;
+    // 登录名
     private String loginName;
+    // 姓名/昵称
     private String name;
+    // 密码MD5密文（仅后台管理展示用）
     private String password;
 }

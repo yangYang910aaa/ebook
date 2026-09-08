@@ -12,7 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 统计与快照服务实现
+ * 统计与快照服务实现：基于电子书每日快照计算运营统计数据。
+ * 核心统计口径：
+ * 1. 快照基线：每日 00:30 定时生成当天快照，记录该时刻各电子书的累计阅读/点赞；
+ * 2. 今日增量 = 实时总量（ebook 表） - 最近一次快照基线；
+ * 3. 昨日增量 = 最近两次快照的累计值之差；
+ * 4. 预计今日阅读 = 今日增量 × (1440 / 已过分钟数)，按时间占比线性外推；
+ * 5. 点赞率 = 总点赞 / 总阅读 × 100%。
  */
 @Service
 public class EbookSnapshotServiceImpl implements EbookSnapshotService {
@@ -23,6 +29,14 @@ public class EbookSnapshotServiceImpl implements EbookSnapshotService {
         this.ebookSnapshotMapper = ebookSnapshotMapper;
     }
 
+    /**
+     * 计算今日/昨日统计卡片：
+     * - 总阅读/总点赞：ebook 表实时累计值；
+     * - 今日增量：实时总量 - 最近一次快照基线（快照每日 00:30 生成）；
+     * - 昨日增量：最近两次快照累计值之差；
+     * - 预计今日阅读：按已过时间占全天比例线性外推；
+     * - 点赞率：总点赞 / 总阅读；增长率：预计今日 vs 昨日增量。
+     */
     @Override
     public StatisticResp getStatistic() {
         Map<String, Object> total = ebookSnapshotMapper.selectTotalStat();
@@ -68,16 +82,19 @@ public class EbookSnapshotServiceImpl implements EbookSnapshotService {
         return resp;
     }
 
+    /** 查询近 30 天每日阅读/点赞增量趋势（含今天，共 30 天） */
     @Override
     public List<DailyStatResp> get30Statistic() {
         String startDate = LocalDate.now().minusDays(29).toString();
         return ebookSnapshotMapper.selectLast30Days(startDate);
     }
 
+    /** 将 MyBatis 返回的 Number（可能是 Long/BigDecimal）安全转为 long，null 视为 0 */
     private long toLong(Object value) {
         return value == null ? 0L : ((Number) value).longValue();
     }
 
+    /** 保留两位小数（四舍五入） */
     private double round2(double value) {
         return Math.round(value * 100.0) / 100.0;
     }

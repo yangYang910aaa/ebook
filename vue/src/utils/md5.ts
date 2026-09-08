@@ -6,31 +6,38 @@
  * 使密码在传输与存储全程均非明文（客户端固定盐无实际增益，此处采用双重 MD5）。
  */
 
+// 32 位整数加法（溢出截断）
 function add32(a: number, b: number): number {
   return (a + b) & 0xffffffff
 }
 
+// MD5 四轮运算的公共函数：非线性函数结果 + 消息分组 + 常数 -> 循环左移 -> 加 b
 function cmn(q: number, a: number, b: number, x: number, s: number, t: number): number {
   a = add32(add32(a, q), add32(x, t))
   return add32((a << s) | (a >>> (32 - s)), b)
 }
 
+// MD5 第一轮：F 函数 (b & c) | (~b & d)
 function ff(a: number, b: number, c: number, d: number, x: number, s: number, t: number): number {
   return cmn((b & c) | (~b & d), a, b, x, s, t)
 }
 
+// MD5 第二轮：G 函数 (b & d) | (c & ~d)
 function gg(a: number, b: number, c: number, d: number, x: number, s: number, t: number): number {
   return cmn((b & d) | (c & ~d), a, b, x, s, t)
 }
 
+// MD5 第三轮：H 函数 b ^ c ^ d
 function hh(a: number, b: number, c: number, d: number, x: number, s: number, t: number): number {
   return cmn(b ^ c ^ d, a, b, x, s, t)
 }
 
+// MD5 第四轮：I 函数 c ^ (b | ~d)
 function ii(a: number, b: number, c: number, d: number, x: number, s: number, t: number): number {
   return cmn(c ^ (b | ~d), a, b, x, s, t)
 }
 
+// MD5 主循环：对一个 512 位（64 字节）分组执行四轮共 64 步运算
 function md5cycle(x: number[], k: number[]): void {
   let a = x[0]
   let b = x[1]
@@ -111,6 +118,7 @@ function md5cycle(x: number[], k: number[]): void {
   x[3] = add32(d, x[3])
 }
 
+// 将 64 字节字符串转为 16 个 32 位整数（小端序）
 function md5blk(s: string): number[] {
   const blks: number[] = []
   for (let i = 0; i < 64; i += 4) {
@@ -120,6 +128,7 @@ function md5blk(s: string): number[] {
   return blks
 }
 
+// MD5 完整计算：填充消息 -> 逐分组运算 -> 返回 4 个 32 位状态
 function md51(s: string): number[] {
   const n = s.length
   const state = [1732584193, -271733879, -1732584194, 271733878]
@@ -142,6 +151,7 @@ function md51(s: string): number[] {
   return state
 }
 
+// 将 32 位整数转为 8 位十六进制字符串（小端序输出）
 function wordToHex(v: number): string {
   let out = ''
   for (let i = 0; i < 4; i++) {

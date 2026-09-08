@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+/* 文档阅读页（前台）：左侧目录树 + 右侧文档内容渲染；支持阅读数自增、点赞/取消点赞（含状态同步和防重复处理） */
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
@@ -59,6 +60,7 @@ interface TreeItem {
   children: TreeItem[]
 }
 
+// 将 DocNode 递归转为 antd Tree 需要的结构
 function toTree(d: DocNode): TreeItem {
   return {
     title: d.name,
@@ -67,6 +69,7 @@ function toTree(d: DocNode): TreeItem {
   }
 }
 
+// 递归查找文档节点
 function findNode(nodes: DocNode[], key: string): DocNode | null {
   for (const n of nodes) {
     if (String(n.id) === key) return n
@@ -83,6 +86,7 @@ onMounted(async () => {
   }
   try {
     docs.value = await getAllDocs(ebookId)
+    // 默认打开第一篇文档
     const first = docs.value[0]
     if (first) {
       await openDoc(String(first.id))
@@ -98,22 +102,24 @@ async function onSelect(keys: string[]) {
   }
 }
 
+// 打开文档：获取内容并渲染，同时本地阅读数 +1（后端 findContent count=true 已累加，此处同步 UI）
 async function openDoc(id: string) {
   currentKey.value = id
   const resp = await findContent(Number(id))
   contentHtml.value = resp.content || ''
-  // 阅读数本地 +1
+  // 阅读数本地 +1，避免重新拉取列表
   const node = findNode(docs.value, id)
   if (node) {
     node.viewCount = (node.viewCount || 0) + 1
   }
 }
 
+// 点赞/取消点赞：根据当前 liked 状态切换；请求失败时根据后端返回的业务错误同步本地状态
 async function vote() {
   if (!currentKey.value) return
   const node = findNode(docs.value, currentKey.value)
   if (!node) return
-  voting.value = true
+  voting.value = true // 防重复点击
   try {
     if (node.liked) {
       // 已点赞 -> 取消点赞
@@ -129,7 +135,7 @@ async function vote() {
       message.success('点赞成功')
     }
   } catch (err) {
-    // 重复点赞/尚未点赞等业务提示由拦截器弹出，这里同步按钮状态
+    // 重复点赞/尚未点赞等业务提示由拦截器弹出，这里根据错误消息同步按钮状态
     const msg = (err as Error | null)?.message
     if (msg === '您已点赞过' && !node.liked) {
       node.liked = true

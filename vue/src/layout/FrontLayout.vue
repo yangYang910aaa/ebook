@@ -78,13 +78,21 @@
           </a-button>
         </div>
 
-        <p class="login-note">游客可自由浏览与阅读 · 后台管理需登录</p>
+        <div class="demo-accounts">
+          <span class="demo-label">演示账号：</span>
+          <a-button v-for="acc in demoAccounts" :key="acc.loginName" size="small" class="demo-chip" @click="fillDemo(acc)">
+            {{ acc.name }}
+          </a-button>
+        </div>
+
+        <p class="login-note">游客可自由浏览与阅读 · 后台管理需登录 · 演示密码均为 123456</p>
       </div>
     </a-modal>
   </a-layout>
 </template>
 
 <script setup lang="ts">
+/* 前台布局：顶部导航 + 左侧分类树 + 内容区 + 页脚；内嵌登录弹窗，负责登录/登出、分类加载、WebSocket 连接 */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
@@ -111,6 +119,20 @@ const loginVisible = ref(false)
 const loggingIn = ref(false)
 const loginForm = ref({ loginName: '', password: '' })
 
+const demoAccounts = [
+  { loginName: 'admin', name: '管理员' },
+  { loginName: 'editor', name: '编辑' },
+  { loginName: 'zhangsan', name: '张三' },
+  { loginName: 'lisi', name: '李四' }
+]
+
+// 填充演示账号（密码固定为 123456）
+function fillDemo(acc: { loginName: string; name: string }) {
+  loginForm.value.loginName = acc.loginName
+  loginForm.value.password = '123456'
+}
+
+// 顶部菜单高亮：后台路径映射为 admin-xxx，其余默认首页
 const selectedKeys = computed(() => {
   if (route.path.startsWith('/admin')) {
     return ['admin-' + route.path.replace('/admin/', '')]
@@ -118,6 +140,7 @@ const selectedKeys = computed(() => {
   return ['home']
 })
 
+// 左侧分类高亮：根据路由 query 中的 category2Id 匹配，电子书列表页高亮"全部"
 const selectedCategory = computed(() => {
   const category2Id = route.query.category2Id as string | undefined
   if (category2Id) return 'c2-' + category2Id
@@ -126,6 +149,12 @@ const selectedCategory = computed(() => {
 
 onMounted(() => {
   loadCategories()
+  // 记住上次登录名，提升体验
+  const lastLogin = localStorage.getItem('ebook_last_login')
+  if (lastLogin) {
+    loginForm.value.loginName = lastLogin
+  }
+  // 已有 token（刷新页面后）时恢复 WebSocket 连接
   if (userStore.token) {
     connectWebSocket(userStore.token)
   }
@@ -135,6 +164,7 @@ onUnmounted(() => {
   closeWebSocket()
 })
 
+// 加载分类并组装为二级树：扁平列表 -> Map 索引 -> 按 parent 挂载到父节点
 async function loadCategories() {
   try {
     const list = await getCategoryList()
@@ -155,6 +185,7 @@ async function loadCategories() {
   }
 }
 
+// 顶部菜单点击：区分首页、关于、后台管理三类
 function onMenuClick({ key }: { key: string }) {
   if (key === 'home') {
     router.push('/')
@@ -165,6 +196,7 @@ function onMenuClick({ key }: { key: string }) {
   }
 }
 
+// 左侧分类点击：欢迎页、全部电子书、具体二级分类
 function onCategoryClick({ key }: { key: string }) {
   if (key === 'welcome') {
     router.push('/')
@@ -175,6 +207,7 @@ function onCategoryClick({ key }: { key: string }) {
   }
 }
 
+// 登录：前端 MD5 加密密码 -> 调用登录接口 -> 保存用户信息 -> 建立 WebSocket 连接
 async function onLogin() {
   if (!loginForm.value.loginName || !loginForm.value.password) {
     message.warning('请输入登录名和密码')
@@ -187,6 +220,7 @@ async function onLogin() {
       password: md5(loginForm.value.password)
     })
     userStore.setUser(resp)
+    localStorage.setItem('ebook_last_login', loginForm.value.loginName)
     loginVisible.value = false
     loginForm.value = { loginName: '', password: '' }
     message.success('登录成功')
@@ -198,6 +232,7 @@ async function onLogin() {
   }
 }
 
+// 退出登录：弹确认框 -> 调用后端登出 -> 清除本地登录态 -> 关闭 WebSocket -> 跳转首页
 async function onLogout() {
   Modal.confirm({
     title: '确认退出登录？',
@@ -352,6 +387,38 @@ async function onLogout() {
   border-color: var(--accent-deep);
   transform: translateY(-1px);
   box-shadow: 0 12px 26px rgba(176, 58, 46, 0.3);
+}
+
+.demo-accounts {
+  margin: 18px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  animation: login-rise 0.45s ease 0.25s both;
+}
+
+.demo-label {
+  font-size: 12px;
+  color: #9a9182;
+  letter-spacing: 0.04em;
+}
+
+.demo-chip.ant-btn {
+  height: 26px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 13px;
+  background: rgba(176, 58, 46, 0.06);
+  border: 1px solid rgba(176, 58, 46, 0.2);
+  color: #8a3226;
+  transition: all 0.2s ease;
+}
+
+.demo-chip.ant-btn:hover {
+  background: rgba(176, 58, 46, 0.12);
+  border-color: rgba(176, 58, 46, 0.4);
+  color: #b03a2e;
 }
 
 .login-note {

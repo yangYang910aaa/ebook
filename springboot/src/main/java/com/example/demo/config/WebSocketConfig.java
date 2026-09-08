@@ -19,6 +19,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
         this.notifyWebSocketHandler = notifyWebSocketHandler;
     }
 
+    /**
+     * 注册 WebSocket 通知端点：/ws/{token}，token 用于标识连接用户
+     * setAllowedOrigins("*") 允许所有来源连接（开发环境，生产环境建议收紧）
+     */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(notifyWebSocketHandler, "/ws/{token}").setAllowedOrigins("*");

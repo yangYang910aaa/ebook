@@ -11,6 +11,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
+    /**
+     * 配置 springdoc OpenAPI 文档元信息：标题、描述、版本
+     */
     @Bean
     public OpenAPI ebookOpenAPI() {
         return new OpenAPI().info(new Info()

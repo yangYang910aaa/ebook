@@ -31,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+/* 电子书列表页（前台）：按分类展示电子书卡片网格，支持分页；从左侧分类菜单切换时通过路由 query 传 category2Id */
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { queryEbooks, type EbookRow } from '../api/ebook'
@@ -49,9 +50,10 @@ const categoryName = ref(route.query.category2Id ? '分类' : '全部电子书')
 
 onMounted(refresh)
 
-// 左侧菜单切换分类：路由 query 变化时组件被复用，需监听并重新加载
+// 左侧菜单切换分类：路由 query 变化时组件被复用（不重新挂载），需监听并重新加载
 watch(() => route.query.category2Id, refresh)
 
+// 刷新：根据 category2Id 更新标题并重置到第一页加载
 async function refresh() {
   const category2Id = Number(route.query.category2Id || 0)
   if (category2Id) {
@@ -69,6 +71,7 @@ async function refresh() {
   await load()
 }
 
+// 分页加载电子书列表（按二级分类筛选）
 async function load() {
   const category2Id = Number(route.query.category2Id || 0) || undefined
   const data = await queryEbooks({
@@ -81,10 +84,12 @@ async function load() {
   total.value = data.total
 }
 
+// 点击电子书卡片：跳转到文档阅读页
 function openEbook(eb: EbookRow) {
   router.push({ path: '/doc', query: { ebookId: eb.id } })
 }
 
+// 封面图片加载失败时标记，显示首字符占位
 function onImgError(id: number) {
   broken[id] = true
 }

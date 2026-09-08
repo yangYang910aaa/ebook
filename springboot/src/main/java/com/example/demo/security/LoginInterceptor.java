@@ -24,6 +24,11 @@ public class LoginInterceptor implements HandlerInterceptor {
         this.redisTemplate = redisTemplate;
     }
 
+    /**
+     * 请求前置处理：校验请求头 token，从 Redis 取出对应用户并写入 ThreadLocal
+     * - OPTIONS 预检请求直接放行（CORS 跨域需要）
+     * - token 缺失或 Redis 中无对应会话时返回 403 风格的统一错误响应
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         // OPTIONS 预检请求直接放行
@@ -41,15 +46,22 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
         User user = OBJECT_MAPPER.convertValue(userObj, User.class);
+        // 将当前登录用户写入 ThreadLocal，供业务层通过 UserContext.get() 获取
         UserContext.set(user);
         return true;
     }
 
+    /**
+     * 请求完成后清理 ThreadLocal：必须在 afterCompletion 中移除，防止线程池复用时用户信息串用、内存泄漏
+     */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         UserContext.clear();
     }
 
+    /**
+     * 写入无权限响应：HTTP 状态 200 + 统一 JSON 体（前端按 success=false 处理）
+     */
     private void writeForbidden(HttpServletResponse response) throws Exception {
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType("application/json;charset=UTF-8");

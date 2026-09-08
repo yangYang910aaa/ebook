@@ -12,6 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+    // 登录拦截器放行路径：登录接口、公开查询接口、WebSocket、Swagger、错误页等无需鉴权
     private static final String[] EXCLUDE_PATHS = {
             "/user/userLogin",
             "/ebook/query",
@@ -35,6 +36,9 @@ public class WebConfig implements WebMvcConfigurer {
         this.loginInterceptor = loginInterceptor;
     }
 
+    /**
+     * 注册登录拦截器：拦截所有请求，排除公开路径
+     */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(loginInterceptor)
@@ -42,6 +46,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(EXCLUDE_PATHS);
     }
 
+    /**
+     * 配置 CORS 跨域：允许前端开发服务器（8080/8081）跨域访问，携带凭证（cookie/token）
+     */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")

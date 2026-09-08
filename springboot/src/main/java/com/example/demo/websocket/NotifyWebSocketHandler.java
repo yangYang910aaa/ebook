@@ -17,20 +17,30 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class NotifyWebSocketHandler extends TextWebSocketHandler {
 
+    // 在线连接池：sessionId → WebSocketSession，ConcurrentHashMap 保证并发安全
     private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
+    /**
+     * 连接建立后回调：将 session 加入在线连接池
+     */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         sessions.put(session.getId(), session);
         log.info("WebSocket 连接建立: {}", session.getId());
     }
 
+    /**
+     * 连接关闭后回调：从在线连接池移除 session
+     */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session.getId());
         log.info("WebSocket 连接关闭: {}", session.getId());
     }
 
+    /**
+     * 传输异常回调：从在线连接池移除异常 session，防止泄漏
+     */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
         sessions.remove(session.getId());
@@ -38,7 +48,7 @@ public class NotifyWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
-     * 向所有在线连接广播通知
+     * 向所有在线连接广播通知消息（遍历连接池，跳过已关闭的 session，单个失败不影响其他推送）
      */
     public void sendToAll(String message) {
         TextMessage text = new TextMessage(message);

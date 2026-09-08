@@ -13,6 +13,11 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
+    /**
+     * 配置 RedisTemplate 序列化策略：
+     * - key / hashKey 使用 StringRedisSerializer，保证 key 人类可读
+     * - value / hashValue 使用 Jackson JSON 序列化，替代默认 JDK 序列化（避免二进制不可读、跨语言不兼容）
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();

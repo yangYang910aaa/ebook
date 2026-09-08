@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * 用户服务实现
+ * 用户服务实现：负责用户登录认证（MD5 加盐校验）、分页查询、新增/编辑、重置密码及删除。
+ * 密码策略：前端已对明文做一次 MD5 再提交，后端收到 32 位 MD5 十六进制后再次加盐 MD5 存储，
+ * 实现"前端+后端双重加密"。登录校验时对前端传入的 MD5 值再次加盐后与库中存储比对。
  */
 @Service
 public class UserServiceImpl implements UserService {
@@ -35,6 +37,10 @@ public class UserServiceImpl implements UserService {
         this.userMapper = userMapper;
     }
 
+    /**
+     * 用户登录：按登录名查询用户，将前端传入的 MD5 密码再次加盐后与库中存储比对，
+     * 用户不存在或密码不匹配均抛出"用户不存在"异常（不区分原因，避免账号枚举攻击）。
+     */
     @Override
     public User login(String loginName, String password) {
         User user = userMapper.selectByLoginName(loginName);
@@ -44,6 +50,7 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
+    /** 用户分页查询：修正非法分页参数，pageSize 上限 1000，按登录名模糊筛选 */
     @Override
     public PageResult<UserResp> list(String loginName, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
@@ -63,6 +70,11 @@ public class UserServiceImpl implements UserService {
         return new PageResult<>(total, list);
     }
 
+    /**
+     * 新增或编辑用户：
+     * - 新增：校验登录名非空且唯一，校验密码格式（32位MD5十六进制），密码加盐后存储；
+     * - 编辑：仅修改昵称，登录名与密码不在此接口修改（密码走重置密码接口）。
+     */
     @Override
     public void save(UserReq req) {
         if (req.getId() == null) {
@@ -87,17 +99,20 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    /** 重置密码：校验新密码格式后，加盐 MD5 存储 */
     @Override
     public void resetPassword(ResetPwdReq req) {
         validatePassword(req.getPassword());
         userMapper.updatePassword(req.getId(), Md5Util.md5(req.getPassword()));
     }
 
+    /** 删除指定用户 */
     @Override
     public void remove(Long id) {
         userMapper.deleteById(id);
     }
 
+    /** 校验密码格式：必须为 32 位 MD5 十六进制字符串（前端已加密一次后的格式） */
     private void validatePassword(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
             throw new BusinessException("密码格式不正确");

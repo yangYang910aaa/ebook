@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+/* 后台管理布局：顶部导航栏（电子书/分类/文档/用户管理）+ 内容区，含退出登录逻辑 */
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal, message } from 'ant-design-vue'
@@ -34,15 +35,18 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
+// 根据当前路由路径高亮对应菜单项（截取 /admin/ 后的部分作为 key）
 const selectedKeys = computed(() => {
   const seg = route.path.replace('/admin/', '')
   return seg ? [seg] : ['ebook']
 })
 
+// 顶部菜单点击：跳转到对应后台管理页面
 function onMenuClick({ key }: { key: string }) {
   router.push('/admin/' + key)
 }
 
+// 退出登录：弹确认框 -> 调用后端登出 -> 清除本地登录态 -> 关闭 WebSocket -> 跳转首页
 async function onLogout() {
   Modal.confirm({
     title: '确认退出登录？',

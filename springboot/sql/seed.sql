@@ -3,7 +3,11 @@
 -- 执行方式：mysql -uroot -p < seed.sql
 -- ============================================================
 
--- 初始管理员账号：admin / 123456
+-- 初始账号（密码统一 123456）
 -- 密码为双重 MD5（前端 MD5(明文) 后提交，后端再 MD5 存储）：md5(md5("123456"))
-INSERT IGNORE INTO wiki.`user` (login_name, name, password)
-VALUES ('admin', '管理员', '14e1b600b1fd579f47433b88e8d85291');
+INSERT IGNORE INTO wiki.`user` (login_name, name, password) VALUES
+('admin', '管理员', '14e1b600b1fd579f47433b88e8d85291'),
+('editor', '内容编辑', '14e1b600b1fd579f47433b88e8d85291'),
+('zhangsan', '张三', '14e1b600b1fd579f47433b88e8d85291'),
+('lisi', '李四', '14e1b600b1fd579f47433b88e8d85291'),
+('wangwu', '王五', '14e1b600b1fd579f47433b88e8d85291');

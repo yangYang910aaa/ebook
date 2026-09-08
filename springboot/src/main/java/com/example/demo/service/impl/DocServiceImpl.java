@@ -23,7 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 文档服务实现
+ * 文档服务实现：负责电子书章节（文档）的树形组装、内容读写、级联删除及点赞/取消点赞。
+ * 核心逻辑点：
+ * 1. 文档树形组装：扁平列表按 parent 指针构建树，并按 sort 递归排序；
+ * 2. 父文档防环校验：编辑时禁止将自身或后代设为父文档；
+ * 3. 级联删除：递归收集所有后代文档 ID，同时删除文档与内容；
+ * 4. 点赞防重：基于 "vote:{ip}:{docId}" 的 Redis key，setIfAbsent 保证同一 IP 不可重复点赞，TTL 180 天。
  */
 @Service
 public class DocServiceImpl implements DocService {
@@ -41,6 +46,12 @@ public class DocServiceImpl implements DocService {
         this.notifyService = notifyService;
     }
 
+    /**
+     * 查询某电子书下全部文档并组装为树形结构：
+     * 1. 查扁平列表，逐个标记当前 IP 是否已点赞（查 Redis key 是否存在）；
+     * 2. 按 parent 指针挂到父节点的 children，无父节点的作为根；
+     * 3. HashMap 遍历顺序不确定，构建树后按 sort 递归排序保证目录顺序。
+     */
     @Override
     public List<DocResp> all(Long ebookId, String ip) {
         List<Doc> docs = docMapper.selectByEbookId(ebookId);
@@ -64,6 +75,7 @@ public class DocServiceImpl implements DocService {
         return roots;
     }
 
+    /** 递归按 sort 字段对文档树排序，null 视为 0 */
     private void sortTree(List<DocResp> nodes) {
         nodes.sort(Comparator.comparingInt(d -> d.getSort() == null ? 0 : d.getSort()));
         for (DocResp node : nodes) {
@@ -73,6 +85,10 @@ public class DocServiceImpl implements DocService {
         }
     }
 
+    /**
+     * 获取文档富文本内容；count=true 时阅读数 +1（前台阅读计），
+     * 后台编辑/预览传 count=false 不计入阅读量。
+     */
     @Override
     public ContentResp findContent(Long id, boolean count) {
         Content content = contentMapper.selectById(id);
@@ -86,6 +102,13 @@ public class DocServiceImpl implements DocService {
         return new ContentResp(content.getId(), content.getContent());
     }
 
+    /**
+     * 新增或编辑文档及内容（事务）：
+     * 1. 校验名称、所属电子书非空；
+     * 2. 父文档校验：存在性、同属一个电子书、编辑时防环（不能将自身或后代设为父文档）；
+     * 3. 新增时同时插入 doc 和 content（content.id = doc.id）；
+     * 4. 编辑时更新 doc，content 存在则更新、不存在则插入（兼容历史数据）。
+     */
     @Override
     @Transactional
     public void save(DocReq req) {
@@ -138,6 +161,10 @@ public class DocServiceImpl implements DocService {
         }
     }
 
+    /**
+     * 级联删除文档（事务）：对逗号分隔的每个 ID 递归收集其所有后代文档 ID，
+     * 然后批量删除文档记录和对应的内容记录（content.id = doc.id）。
+     */
     @Override
     @Transactional
     public void delete(String idsStr) {
@@ -154,6 +181,7 @@ public class DocServiceImpl implements DocService {
         }
     }
 
+    /** 递归收集指定文档及其所有后代文档的 ID，用于级联删除和防环校验 */
     private void collectIds(Long id, List<Long> result) {
         result.add(id);
         List<Doc> children = docMapper.selectByParent(id);
@@ -162,6 +190,12 @@ public class DocServiceImpl implements DocService {
         }
     }
 
+    /**
+     * 点赞文档：
+     * 1. 校验文档存在；
+     * 2. Redis setIfAbsent 写入 "vote:{ip}:{id}"（TTL 180 天），写入失败说明已点赞过，抛异常；
+     * 3. 写入成功则数据库点赞数 +1，并异步推送 WebSocket 点赞通知。
+     */
     @Override
     public void vote(Long id, String ip) {
         Doc doc = docMapper.selectById(id);
@@ -179,6 +213,12 @@ public class DocServiceImpl implements DocService {
         notifyService.notifyVote(doc.getName(), ip);
     }
 
+    /**
+     * 取消点赞：
+     * 1. 校验文档存在；
+     * 2. 删除 Redis 防重 key，删除失败说明尚未点赞，抛异常；
+     * 3. 删除成功则数据库点赞数 -1。
+     */
     @Override
     public void unvote(Long id, String ip) {
         Doc doc = docMapper.selectById(id);
@@ -194,6 +234,7 @@ public class DocServiceImpl implements DocService {
         docMapper.decrementVote(id);
     }
 
+    /** 构造点赞防重 Redis key：vote:{客户端IP}:{文档ID} */
     private String voteKey(Long id, String ip) {
         return "vote:" + ip + ":" + id;
     }

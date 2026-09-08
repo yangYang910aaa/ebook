@@ -13,18 +13,30 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class Result<T> {
 
+    // 是否成功
     private Boolean success;
+    // 提示消息
     private String message;
+    // 响应数据（分页时为 PageResult { total, list }）
     private T content;
 
+    /**
+     * 成功响应（带数据）
+     */
     public static <T> Result<T> success(T data) {
         return new Result<>(true, "success", data);
     }
 
+    /**
+     * 成功响应（无数据，如删除/更新操作）
+     */
     public static <T> Result<T> success() {
         return success(null);
     }
 
+    /**
+     * 失败响应（带错误消息）
+     */
     public static <T> Result<T> error(String message) {
         return new Result<>(false, message, null);
     }

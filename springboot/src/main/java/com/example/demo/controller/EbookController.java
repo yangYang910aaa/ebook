@@ -17,7 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 电子书管理
+ * 电子书管理控制器：提供电子书的分页/条件查询、新增/编辑、删除及封面图片上传接口。
+ * 路径前缀 /ebook，删除电子书时级联清理其下文档、内容及快照数据。
  */
 @Tag(name = "电子书管理")
 @RestController
@@ -30,6 +31,7 @@ public class EbookController {
         this.ebookService = ebookService;
     }
 
+    /** GET /ebook/query — 电子书分页查询，支持按名称模糊筛选和二级分类精确筛选 */
     @Operation(summary = "电子书分页/条件查询")
     @GetMapping("/query")
     public Result<PageResult<EbookResp>> query(@RequestParam(required = false) String name,
@@ -39,6 +41,7 @@ public class EbookController {
         return Result.success(ebookService.query(name, category2Id, new PageReq(pageNum, pageSize)));
     }
 
+    /** POST /ebook/save — 新增或编辑电子书（校验二级分类与一级分类的归属关系） */
     @Operation(summary = "新增/编辑电子书")
     @PostMapping("/save")
     public Result<Void> save(@RequestBody EbookReq req) {
@@ -46,6 +49,7 @@ public class EbookController {
         return Result.success();
     }
 
+    /** GET /ebook/remove?id= — 删除电子书，级联删除其下全部文档、内容及快照 */
     @Operation(summary = "删除电子书")
     @GetMapping("/remove")
     public Result<Void> remove(@RequestParam Long id) {
@@ -53,6 +57,7 @@ public class EbookController {
         return Result.success();
     }
 
+    /** POST /ebook/uploadImage — 封面图片上传，校验格式（jpg/jpeg/gif/png）和大小（≤10MB），返回可访问 URL */
     @Operation(summary = "封面图片上传")
     @PostMapping("/uploadImage")
     public Result<String> uploadImage(@RequestParam("file") MultipartFile file) {

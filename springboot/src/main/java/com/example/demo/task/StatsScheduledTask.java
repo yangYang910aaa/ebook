@@ -23,12 +23,20 @@ public class StatsScheduledTask {
         this.ebookSnapshotMapper = ebookSnapshotMapper;
     }
 
+    /**
+     * 电子书统计聚合：按文档维度汇总阅读数/点赞数，批量更新 ebook 表的统计字段
+     * cron 表达式从配置项 task.ebook-aggregate-cron 读取
+     */
     @Scheduled(cron = "#{taskProperties.ebookAggregateCron}")
     public void aggregateEbookStats() {
         int updated = ebookMapper.aggregateStats();
         log.info("电子书统计聚合完成，更新 {} 本电子书", updated);
     }
 
+    /**
+     * 每日快照生成：将当日各电子书阅读/点赞数写入快照表，用于计算日增量和趋势图
+     * cron 表达式从配置项 task.snapshot-cron 读取
+     */
     @Scheduled(cron = "#{taskProperties.snapshotCron}")
     public void generateDailySnapshot() {
         int inserted = ebookSnapshotMapper.insertDailySnapshot();

@@ -26,7 +26,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 电子书服务实现
+ * 电子书服务实现：负责电子书的分页/条件查询、新增/编辑、删除及封面图片上传。
+ * 核心逻辑点：
+ * 1. 二级分类归属校验：若填了二级分类，其父分类必须等于所选一级分类；
+ * 2. 级联删除：删除电子书时按 内容→文档→快照→电子书 顺序清理，避免孤儿数据；
+ * 3. 封面上传：校验格式（jpg/jpeg/gif/png）和大小（≤10MB），UUID 重名后存本地，返回 URL 前缀拼接的访问地址。
  */
 @Service
 public class EbookServiceImpl implements EbookService {
@@ -52,6 +56,7 @@ public class EbookServiceImpl implements EbookService {
         this.ebookSnapshotMapper = ebookSnapshotMapper;
     }
 
+    /** 电子书分页查询：修正非法分页参数，pageSize 上限 1000，支持名称模糊和二级分类精确筛选 */
     @Override
     public PageResult<EbookResp> query(String name, Long category2Id, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
@@ -62,6 +67,12 @@ public class EbookServiceImpl implements EbookService {
         return new PageResult<>(total, list);
     }
 
+    /**
+     * 新增或编辑电子书：
+     * 1. 校验名称非空；
+     * 2. 校验二级分类归属：若填了二级分类，其父分类必须等于所选一级分类；
+     * 3. 新增插入，编辑则先校验存在再更新。
+     */
     @Override
     public void save(EbookReq req) {
         if (req.getName() == null || req.getName().isBlank()) {
@@ -91,6 +102,7 @@ public class EbookServiceImpl implements EbookService {
         }
     }
 
+    /** 将请求参数填充到电子书实体，分类 ID 为空时默认 0 */
     private void fill(Ebook ebook, EbookReq req) {
         ebook.setName(req.getName());
         ebook.setCategory1Id(req.getCategory1Id() == null ? 0L : req.getCategory1Id());
@@ -99,6 +111,10 @@ public class EbookServiceImpl implements EbookService {
         ebook.setCover(req.getCover());
     }
 
+    /**
+     * 删除电子书（事务）：按 内容→文档→快照→电子书 顺序级联删除，
+     * 先删子表再删主表，避免外键约束和孤儿数据。
+     */
     @Override
     @Transactional
     public void remove(Long id) {
@@ -109,6 +125,12 @@ public class EbookServiceImpl implements EbookService {
         ebookMapper.deleteById(id);
     }
 
+    /**
+     * 封面图片上传：
+     * 1. 校验文件非空、格式（jpg/jpeg/gif/png）、大小（≤10MB）；
+     * 2. 确保上传目录存在；
+     * 3. UUID 去扩展名重命名后保存到本地，返回配置的 URL 前缀 + 文件名的可访问地址。
+     */
     @Override
     public String uploadImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {

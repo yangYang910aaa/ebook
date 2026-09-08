@@ -14,7 +14,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * 分类服务实现
+ * 分类服务实现：负责电子书分类的查询、新增/编辑及删除。
+ * 分类为两级树形结构（parent=0 为一级），核心约束：
+ * 1. 二级分类只能挂载到一级分类下（父分类的 parent 必须为 0）；
+ * 2. 一级分类不可修改父分类（保持层级稳定）；
+ * 3. 删除前校验：存在子分类或已被电子书引用时拒绝删除。
  */
 @Service
 public class CategoryServiceImpl implements CategoryService {
@@ -27,16 +31,19 @@ public class CategoryServiceImpl implements CategoryService {
         this.ebookMapper = ebookMapper;
     }
 
+    /** 查询全部分类（扁平列表，由前端组装为树形/级联选择器） */
     @Override
     public List<Category> getCategoryList() {
         return categoryMapper.selectAll();
     }
 
+    /** 查询所有一级分类（parent=0） */
     @Override
     public List<Category> getParents() {
         return categoryMapper.selectByParent(0L);
     }
 
+    /** 分类分页查询：修正非法分页参数，pageSize 上限 1000，按名称模糊筛选 */
     @Override
     public PageResult<CategoryResp> list(String name, PageReq pageReq) {
         int pageNum = pageReq.getPageNum() == null || pageReq.getPageNum() < 1 ? 1 : pageReq.getPageNum();
@@ -47,6 +54,11 @@ public class CategoryServiceImpl implements CategoryService {
         return new PageResult<>(total, list);
     }
 
+    /**
+     * 新增或编辑分类：
+     * - 新增：parent 默认为 0（一级），若指定父分类则校验其存在且必须是一级分类（parent=0）；
+     * - 编辑：一级分类不可修改父分类（保持层级稳定），二级分类可改父节点但仍须挂载到一级分类下。
+     */
     @Override
     public void save(CategoryReq req) {
         if (req.getName() == null || req.getName().isBlank()) {
@@ -83,6 +95,9 @@ public class CategoryServiceImpl implements CategoryService {
         }
     }
 
+    /**
+     * 删除分类：存在子分类或已被电子书引用时拒绝删除，避免孤儿数据和引用失效。
+     */
     @Override
     public void remove(Long id) {
         if (categoryMapper.countByParent(id) > 0) {
