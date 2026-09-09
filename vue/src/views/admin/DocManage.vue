@@ -1,72 +1,120 @@
 <template>
   <div class="doc-manage">
-    <section class="panel tree-panel">
-      <div class="tree-head">
-        <h4 class="display">文档目录</h4>
-        <a-button type="link" size="small" @click="addRoot">新增根文档</a-button>
-      </div>
-      <div class="tree-body">
-        <a-tree
-          :tree-data="treeData"
-          :default-expand-all="true"
-          :selected-keys="selectedKeys"
-          :field-names="{ title: 'title', key: 'key', children: 'children' }"
-          @select="onSelect"
-        />
-      </div>
-      <div v-if="selectedDoc" class="tree-actions">
-        <a-button size="small" @click="addChild">在选中下新增</a-button>
-        <a-popconfirm :title="deleteTip" ok-text="删除" cancel-text="取消" @confirm="removeSelected">
-          <a-button size="small" danger>删除选中</a-button>
-        </a-popconfirm>
-      </div>
-    </section>
+    <!-- 电子书选择栏：先选分类，再选该分类下的电子书 -->
+    <div class="ebook-bar panel">
+      <span class="ebook-bar-label">分类</span>
+      <a-select
+        v-model:value="selectedCategoryId"
+        style="width: 150px"
+        @change="onCategoryChange"
+      >
+        <a-select-option :value="0">全部分类</a-select-option>
+        <a-select-option v-for="c in categoryList" :key="c.id" :value="c.id">
+          {{ c.name }}
+        </a-select-option>
+      </a-select>
+      <span class="ebook-bar-label">电子书</span>
+      <a-select
+        v-model:value="currentEbookId"
+        placeholder="请选择电子书"
+        style="width: 280px"
+        show-search
+        option-filter-prop="children"
+        @change="onEbookChange"
+      >
+        <a-select-option v-for="b in filteredEbooks" :key="b.id" :value="b.id">
+          {{ b.name }}
+        </a-select-option>
+      </a-select>
+      <span v-if="currentEbookId" class="ebook-bar-hint">{{ currentEbookName }} · 共 {{ docTotalCount }} 章</span>
+    </div>
 
-    <section class="panel form-panel">
-      <div class="form-head">
-        <div class="form-title">
-          <h4 class="display">{{ form.id ? '编辑文档' : '新增文档' }}</h4>
-          <span class="save-status" :class="{ dirty: isDirty }">
-            <template v-if="isDirty">● 未保存</template>
-            <template v-else>✓ 已保存<span v-if="savedAt"> · {{ savedAt }}</span></template>
-          </span>
+    <div v-if="currentEbookId" class="doc-manage-body">
+      <!-- 左侧：文档目录树 -->
+      <section class="panel tree-panel">
+        <div class="tree-head">
+          <h4 class="display">章节目录</h4>
         </div>
-        <a-button @click="previewVisible = true" :disabled="!form.content">内容预览</a-button>
-      </div>
-      <a-form layout="vertical">
-        <a-form-item label="文档名称">
-          <a-input v-model:value="form.name" placeholder="请输入文档名称" />
-        </a-form-item>
-        <a-form-item label="父文档">
-          <a-tree-select
-            v-model:value="form.parent"
-            :tree-data="parentTreeData"
-            :field-names="{ label: 'title', value: 'key', children: 'children' }"
-            allow-clear
-            placeholder="无（作为根文档）"
-            style="width: 100%"
+        <div class="tree-body">
+          <a-empty v-if="!docs.length" description="暂无章节，点击下方按钮新增" :image="emptyImage" />
+          <a-tree
+            v-else
+            :tree-data="treeData"
+            :expanded-keys="expandedKeys"
+            :selected-keys="selectedKeys"
+            :field-names="{ title: 'title', key: 'key', children: 'children' }"
+            @select="onSelect"
+            @expand="onExpand"
           />
-        </a-form-item>
-        <a-form-item label="顺序">
-          <a-input-number v-model:value="form.sort" :min="0" style="width: 100%" />
-        </a-form-item>
-        <a-form-item label="内容">
-          <div ref="editorRef" class="editor"></div>
-        </a-form-item>
-        <div class="editor-status">
-          <span class="status-words">共 {{ wordCount }} 字</span>
-          <span class="status-tip">Ctrl + S 快速保存</span>
         </div>
-        <div class="form-actions">
-          <a-button type="primary" :loading="saving" @click="save">保存</a-button>
-          <a-button @click="onResetClick">清空</a-button>
+        <div class="tree-actions">
+          <a-button size="small" type="primary" @click="addRoot">新增章节</a-button>
+          <a-button size="small" @click="addChild" :disabled="!selectedDoc">新增子章节</a-button>
+          <a-popconfirm v-if="selectedDoc" :title="deleteTip" ok-text="删除" cancel-text="取消" @confirm="removeSelected">
+            <a-button size="small" danger>删除</a-button>
+          </a-popconfirm>
         </div>
-      </a-form>
-    </section>
+        <div class="tree-tip">
+          <span>「新增章节」= 一级目录</span>
+          <span>「新增子章节」= 当前章节的下一级</span>
+        </div>
+      </section>
 
-    <a-drawer v-model:visible="previewVisible" :width="520">
+      <!-- 右侧：编辑表单 -->
+      <section class="panel form-panel">
+        <div class="form-head">
+          <div class="form-title">
+            <h4 class="display">{{ form.id ? '编辑章节' : '新增章节' }}</h4>
+            <span class="save-status" :class="{ dirty: isDirty }">
+              <template v-if="isDirty">● 未保存</template>
+              <template v-else>✓ 已保存<span v-if="savedAt"> · {{ savedAt }}</span></template>
+            </span>
+          </div>
+          <a-button @click="previewVisible = true" :disabled="!form.content">内容预览</a-button>
+        </div>
+        <a-form layout="vertical">
+          <a-form-item label="章节名称">
+            <a-input v-model:value="form.name" placeholder="请输入章节名称，如：第一章 概述" />
+          </a-form-item>
+          <a-form-item label="父章节">
+            <a-tree-select
+              v-model:value="form.parent"
+              :tree-data="parentTreeData"
+              :field-names="{ label: 'title', value: 'key', children: 'children' }"
+              allow-clear
+              placeholder="不选 = 作为一级章节"
+              style="width: 100%"
+              tree-default-expand-all
+            />
+            <div class="form-item-hint">当前章节及其子章节不会出现在列表中，防止循环嵌套</div>
+          </a-form-item>
+          <a-form-item label="顺序">
+            <a-input-number v-model:value="form.sort" :min="0" style="width: 100%" placeholder="数字越小越靠前" />
+          </a-form-item>
+          <a-form-item label="内容">
+            <div ref="editorRef" class="editor"></div>
+          </a-form-item>
+          <div class="editor-status">
+            <span class="status-words">共 {{ wordCount }} 字</span>
+            <span class="status-tip">Ctrl + S 快速保存</span>
+          </div>
+          <div class="form-actions">
+            <a-button type="primary" :loading="saving" @click="save">保存</a-button>
+            <a-button @click="onResetClick">清空</a-button>
+          </div>
+        </a-form>
+      </section>
+    </div>
+
+    <!-- 未选书时的空状态 -->
+    <div v-else class="empty-tip panel">
+      <a-empty description="请先在上方选择要管理的电子书" />
+    </div>
+
+    <!-- 内容预览抽屉 -->
+    <a-drawer v-model:visible="previewVisible" :width="560">
       <template #title>
-        <span class="drawer-title">内容预览</span>
+        <span class="drawer-title">内容预览 · {{ form.name || '未命名' }}</span>
       </template>
       <div class="preview-body" v-html="form.content"></div>
     </a-drawer>
@@ -74,22 +122,54 @@
 </template>
 
 <script setup lang="ts">
-/* 文档管理（后台）：左侧文档目录树 + 右侧文档编辑表单（wangEditor 富文本）；支持新增根/子文档、编辑、删除（含子文档）、未保存修改确认、Ctrl+S 快捷保存 */
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+/* 文档管理（后台）优化版：电子书选择器 + 左侧文档树 + 右侧富文本编辑；
+   父文档下拉过滤不可选项（而非禁用）；保存后自动选中新文档；空状态提示 */
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import E from 'wangeditor'
 import { deleteDocs, findContent, getAllDocs, saveDoc, type DocNode } from '../../api/doc'
+import { queryEbooks, type EbookRow } from '../../api/ebook'
+import { getCategoryList, type CategoryRow } from '../../api/category'
 
 const route = useRoute()
-const ebookId = Number(route.query.ebookId || 0)
 
+// ===== 电子书选择 =====
+const ebookList = ref<EbookRow[]>([])
+const currentEbookId = ref<number | undefined>(route.query.ebookId ? Number(route.query.ebookId) : undefined)
+const currentEbookName = computed(() => ebookList.value.find(b => b.id === currentEbookId.value)?.name || '')
+
+// 分类筛选：先选分类，再选该分类下的电子书
+const categoryList = ref<CategoryRow[]>([])       // 一级分类列表
+const selectedCategoryId = ref<number>(0)          // 0 = 全部分类
+
+// 根据选中分类过滤电子书
+const filteredEbooks = computed(() => {
+  if (selectedCategoryId.value === 0) return ebookList.value
+  return ebookList.value.filter((b) => b.category1Id === selectedCategoryId.value)
+})
+
+// ===== 文档树 =====
 const docs = ref<DocNode[]>([])
 const selectedKey = ref('')
+const expandedKeys = ref<string[]>([])
 const saving = ref(false)
 const previewVisible = ref(false)
 const editorRef = ref<HTMLDivElement>()
 let editor: E | null = null
+
+// 文档总数（递归统计）
+const docTotalCount = computed(() => {
+  let count = 0
+  const walk = (nodes: DocNode[]) => {
+    for (const n of nodes) {
+      count++
+      walk(n.children || [])
+    }
+  }
+  walk(docs.value)
+  return count
+})
 
 interface Snapshot {
   name: string
@@ -106,48 +186,68 @@ const form = reactive({ id: 0, name: '', parent: undefined as number | undefined
 interface TreeItem {
   title: string
   key: string
-  disabled?: boolean
   children: TreeItem[]
 }
 
-// 左侧目录树数据：将后端返回的 DocNode 递归转为 antd Tree 需要的 { title, key, children } 结构
-const treeData = computed(() => docs.value.map((d) => toTree(d, false)))
+// 左侧目录树
+const treeData = computed(() => docs.value.map((d) => toTree(d)))
 const selectedKeys = computed(() => (selectedKey.value ? [selectedKey.value] : []))
 const selectedDoc = computed(() => findNode(docs.value, selectedKey.value))
 
-// 脏检查：当前表单与初始快照不一致时提示"未保存"
+// 脏检查
 const isDirty = computed(() => {
   const s = initialSnapshot.value
   if (!s) return false
   return form.name !== s.name || form.parent !== s.parent || form.sort !== s.sort || form.content !== s.content
 })
 
-// 父文档下拉树：编辑当前文档时，禁用当前节点及其所有子孙（防止选自己或后代作为父节点造成环）
-const parentTreeData = computed(() => docs.value.map((d) => toTree(d, form.id ? String(form.id) === String(d.id) : false)))
+// 父文档下拉：过滤掉当前文档及其子孙（而非禁用），用户看到的都是可选项
+const parentTreeData = computed(() => {
+  if (!form.id) return docs.value.map((d) => toTree(d))
+  const current = findNode(docs.value, String(form.id))
+  if (!current) return docs.value.map((d) => toTree(d))
+  const excludeIds = collectDescendantIds(current)
+  return filterTree(docs.value, excludeIds)
+})
 
-// 删除确认提示：递归收集当前节点及所有子文档名称，让用户明确删除范围
+// 删除确认提示
 const deleteTip = computed(() => {
   if (!selectedDoc.value) return '确定删除？'
   const names = collectNames(selectedDoc.value)
   return `将删除：${names.join('、')}，是否继续？`
 })
 
-/**
- * 将 DocNode 转为 TreeItem
- * @param d 文档节点
- * @param selfDisabled 是否禁用当前节点（编辑时防止选自己作为父文档）；禁用状态会递归传递给子孙
- */
-function toTree(d: DocNode, selfDisabled: boolean): TreeItem {
-  const disabled = selfDisabled
+// antd empty 组件默认图太大，用简单占位
+const emptyImage = ''
+
+function toTree(d: DocNode): TreeItem {
   return {
     title: d.name,
     key: String(d.id),
-    disabled,
-    children: d.children.map((c) => toTree(c, disabled))
+    children: (d.children || []).map((c) => toTree(c))
   }
 }
 
-// 递归查找文档节点（深度优先）
+// 递归收集节点及其所有子孙 ID（父文档下拉过滤用）
+function collectDescendantIds(node: DocNode): Set<number> {
+  const ids = new Set<number>([node.id])
+  ;(node.children || []).forEach((c) => {
+    collectDescendantIds(c).forEach((id) => ids.add(id))
+  })
+  return ids
+}
+
+// 过滤树：排除指定 ID 的节点
+function filterTree(nodes: DocNode[], excludeIds: Set<number>): TreeItem[] {
+  return nodes
+    .filter((n) => !excludeIds.has(n.id))
+    .map((n) => ({
+      title: n.name,
+      key: String(n.id),
+      children: filterTree(n.children || [], excludeIds)
+    }))
+}
+
 function findNode(nodes: DocNode[], key: string): DocNode | null {
   for (const n of nodes) {
     if (String(n.id) === key) return n
@@ -157,14 +257,22 @@ function findNode(nodes: DocNode[], key: string): DocNode | null {
   return null
 }
 
-// 递归收集节点及其所有子孙的名称（删除确认提示用）
+// 按名称查找节点（保存后自动选中用）
+function findNodeByName(nodes: DocNode[], name: string): DocNode | null {
+  for (const n of nodes) {
+    if (n.name === name) return n
+    const hit = findNodeByName(n.children || [], name)
+    if (hit) return hit
+  }
+  return null
+}
+
 function collectNames(node: DocNode): string[] {
   const names = [node.name]
   ;(node.children || []).forEach((c) => names.push(...collectNames(c)))
   return names
 }
 
-// 统计字数：去除 HTML 标签和 &nbsp; 后计算字符数
 function countWords(html: string): number {
   const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, '')
   return text.length
@@ -175,12 +283,10 @@ function formatTime(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-// 保存当前表单快照，用于脏检查对比
 function takeSnapshot(): Snapshot {
   return { name: form.name, parent: form.parent, sort: form.sort, content: form.content }
 }
 
-/** 有未保存修改时先弹确认框，用户确认后再执行操作 */
 function withConfirm(fn: () => void) {
   if (!isDirty.value) {
     fn()
@@ -188,14 +294,13 @@ function withConfirm(fn: () => void) {
   }
   Modal.confirm({
     title: '有未保存的修改',
-    content: '当前文档有未保存的修改，离开后将丢失，是否继续？',
+    content: '当前章节有未保存的修改，离开后将丢失，是否继续？',
     okText: '离开',
     cancelText: '取消',
     onOk: () => { fn() }
   })
 }
 
-// 全局键盘监听：Ctrl+S / Cmd+S 触发保存
 function onKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
@@ -203,23 +308,45 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-onMounted(async () => {
-  if (!ebookId) {
-    message.warning('缺少电子书参数')
-    return
-  }
-  // 初始化 wangEditor 富文本编辑器
-  editor = new E(editorRef.value as HTMLDivElement)
+// 初始化 wangEditor 编辑器（确保容器已渲染后才调用）
+function initEditor() {
+  if (editor || !editorRef.value) return
+  editor = new E(editorRef.value)
   editor.config.height = 420
-  editor.config.placeholder = '请输入文档内容…'
-  // 编辑器内容变化时同步到表单并更新字数
+  editor.config.placeholder = '请输入章节内容…'
   editor.config.onchange = (html: string) => {
     form.content = html
     wordCount.value = countWords(html)
   }
   editor.create()
+}
+
+onMounted(async () => {
+  // 加载一级分类列表
+  try {
+    const cats = await getCategoryList()
+    categoryList.value = cats.filter((c) => c.parent === 0)
+  } catch {
+    categoryList.value = []
+  }
+
+  // 加载电子书列表（用于选择器）
+  try {
+    const data = await queryEbooks({ pageNum: 1, pageSize: 1000 })
+    ebookList.value = data.list
+  } catch {
+    ebookList.value = []
+  }
+
   window.addEventListener('keydown', onKeydown)
-  await loadTree()
+
+  // 如果 URL 带了 ebookId，自动选中对应分类，初始化编辑器并加载文档
+  if (currentEbookId.value) {
+    const book = ebookList.value.find((b) => b.id === currentEbookId.value)
+    if (book) selectedCategoryId.value = book.category1Id || 0
+    initEditor()
+    await loadTree()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -227,22 +354,66 @@ onBeforeUnmount(() => {
   editor?.destroy()
 })
 
-// 加载文档树，默认选中第一篇
+// 切换分类：如果当前选中的电子书不在新分类下，清空选择
+function onCategoryChange() {
+  if (!currentEbookId.value) return
+  const stillExists = filteredEbooks.value.some((b) => b.id === currentEbookId.value)
+  if (!stillExists) {
+    withConfirm(() => {
+      currentEbookId.value = undefined
+      resetForm()
+      docs.value = []
+    })
+  }
+}
+
+// 切换电子书
+async function onEbookChange(id: number) {
+  withConfirm(async () => {
+    currentEbookId.value = id
+    // 第一次选择电子书时，容器刚从 v-if 渲染出来，等待 DOM 就绪后初始化编辑器
+    await nextTick()
+    initEditor()
+    resetForm()
+    await loadTree()
+  })
+}
+
+// 加载文档树，默认展开全部并选中第一篇
 async function loadTree() {
-  docs.value = await getAllDocs(ebookId)
+  if (!currentEbookId.value) return
+  docs.value = await getAllDocs(currentEbookId.value)
+  // 默认展开所有节点
+  expandedKeys.value = collectAllKeys(docs.value)
   if (docs.value.length && !selectedKey.value) {
     await selectDoc(String(docs.value[0].id))
   }
 }
 
-// 左侧树节点点击：有未保存修改时先确认
+// 收集所有节点 key（用于默认展开）
+function collectAllKeys(nodes: DocNode[]): string[] {
+  const keys: string[] = []
+  const walk = (list: DocNode[]) => {
+    for (const n of list) {
+      keys.push(String(n.id))
+      walk(n.children || [])
+    }
+  }
+  walk(nodes)
+  return keys
+}
+
+function onExpand(keys: string[]) {
+  expandedKeys.value = keys
+}
+
 async function onSelect(keys: string[]) {
   if (keys.length) {
     withConfirm(() => { selectDoc(keys[0]) })
   }
 }
 
-// 选中并加载文档内容到表单；后台编辑不计阅读数（count=false）
+// 选中并加载文档内容（后台编辑不计阅读数）
 async function selectDoc(id: string) {
   selectedKey.value = id
   const node = findNode(docs.value, id)
@@ -256,11 +427,10 @@ async function selectDoc(id: string) {
     content: resp.content || ''
   })
   editor?.txt.html(resp.content || '')
-  initialSnapshot.value = takeSnapshot() // 更新快照，重置脏状态
+  initialSnapshot.value = takeSnapshot()
   wordCount.value = countWords(resp.content || '')
 }
 
-// 重置表单为新增状态
 function resetForm() {
   selectedKey.value = ''
   Object.assign(form, { id: 0, name: '', parent: undefined, sort: 0, content: '' })
@@ -273,57 +443,73 @@ function onResetClick() {
   withConfirm(() => resetForm())
 }
 
-// 新增根文档：parent 为空
+// 新增根文档（一级章节）
 function addRoot() {
   withConfirm(() => {
     resetForm()
     form.parent = undefined
+    form.sort = 0
   })
 }
 
 // 在当前选中文档下新增子文档
 function addChild() {
   if (!selectedDoc.value) {
-    message.warning('请先在左侧选择一个父文档')
+    message.warning('请先在左侧选择一个父章节')
     return
   }
   const parentId = selectedDoc.value.id
   withConfirm(() => {
     resetForm()
     form.parent = parentId
+    form.sort = 0
   })
 }
 
-// 保存文档：新增（id=0）或更新，保存后刷新树并更新快照
+// 保存文档：新增或更新，保存后刷新树并自动选中刚保存的文档
 async function save() {
   if (!form.name.trim()) {
-    message.warning('请输入文档名称')
+    message.warning('请输入章节名称')
+    return
+  }
+  if (!currentEbookId.value) {
+    message.warning('请先选择电子书')
     return
   }
   saving.value = true
+  const savedName = form.name
+  const isNew = !form.id
   try {
     await saveDoc({
       id: form.id || undefined,
-      ebookId,
+      ebookId: currentEbookId.value,
       parent: form.parent,
       name: form.name,
       sort: form.sort,
       content: form.content
     })
     message.success('保存成功')
-    initialSnapshot.value = takeSnapshot() // 保存后更新快照，清除脏状态
+    initialSnapshot.value = takeSnapshot()
     savedAt.value = formatTime(new Date())
     await loadTree()
+    // 新增文档后自动选中它（按名称匹配）
+    if (isNew) {
+      const found = findNodeByName(docs.value, savedName)
+      if (found) {
+        selectedKey.value = String(found.id)
+        await selectDoc(String(found.id))
+      }
+    }
   } finally {
     saving.value = false
   }
 }
 
-// 删除选中文档（含所有子文档），后端级联删除
+// 删除选中文档（含所有子文档）
 async function removeSelected() {
   if (!selectedKey.value) return
   await deleteDocs(selectedKey.value)
-  message.success('删除成功（含子文档）')
+  message.success('删除成功（含子章节）')
   resetForm()
   await loadTree()
 }
@@ -331,6 +517,34 @@ async function removeSelected() {
 
 <style scoped>
 .doc-manage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ===== 电子书选择栏 ===== */
+.ebook-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+}
+
+.ebook-bar-label {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.ebook-bar-hint {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ===== 主体两栏 ===== */
+.doc-manage-body {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 16px;
@@ -360,17 +574,31 @@ async function removeSelected() {
 }
 
 .tree-body {
-  max-height: 480px;
+  max-height: 420px;
   overflow: auto;
 }
 
 .tree-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
 }
 
+.tree-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--paper);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ===== 表单 ===== */
 .form-head {
   display: flex;
   align-items: center;
@@ -392,6 +620,13 @@ async function removeSelected() {
 
 .save-status.dirty {
   color: var(--accent);
+}
+
+.form-item-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 .editor {
@@ -418,6 +653,13 @@ async function removeSelected() {
   gap: 10px;
 }
 
+/* ===== 空状态 ===== */
+.empty-tip {
+  display: flex;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
 /* ===== 表单控件美化 ===== */
 .form-panel :deep(.ant-form-item-label > label) {
   font-family: var(--serif);
@@ -434,7 +676,7 @@ async function removeSelected() {
 
 .form-panel :deep(.ant-input):hover,
 .form-panel :deep(.ant-input-number:hover),
-.form-panel :deep(.ant-select-selector:hover) {
+.form-panel :deep(.ant-select-selector):hover {
   border-color: var(--accent-soft);
 }
 
@@ -467,8 +709,11 @@ async function removeSelected() {
 }
 
 @media (max-width: 900px) {
-  .doc-manage {
+  .doc-manage-body {
     grid-template-columns: 1fr;
+  }
+  .tree-panel {
+    position: static;
   }
 }
 </style>

@@ -6,39 +6,39 @@
       <p class="hero-sub">从左侧分类挑选感兴趣的电子书，点击即可在线阅读；下方是平台阅读数据一览。</p>
     </section>
 
-    <section v-if="stat" class="stats-grid">
+    <section v-if="animated" class="stats-grid">
       <article class="stat-card stat-primary">
         <span class="stat-label">总阅读量</span>
-        <span class="stat-value display">{{ stat.totalViewCount }}</span>
+        <span class="stat-value display">{{ fmt(animated.totalViewCount) }}</span>
         <span class="stat-foot">累计阅读次数</span>
       </article>
       <article class="stat-card stat-primary">
         <span class="stat-label">总点赞量</span>
-        <span class="stat-value display">{{ stat.totalVoteCount }}</span>
+        <span class="stat-value display">{{ fmt(animated.totalVoteCount) }}</span>
         <span class="stat-foot">累计点赞次数</span>
       </article>
       <article class="stat-card stat-primary">
         <span class="stat-label">点赞率</span>
-        <span class="stat-value display">{{ stat.voteRate }}<small>%</small></span>
+        <span class="stat-value display">{{ animated.voteRate.toFixed(1) }}<small>%</small></span>
         <span class="stat-foot">点赞 / 阅读</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">今日阅读</span>
-        <span class="stat-value display">{{ stat.todayViewCount }}</span>
+        <span class="stat-value display">{{ fmt(animated.todayViewCount) }}</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">今日点赞</span>
-        <span class="stat-value display">{{ stat.todayVoteCount }}</span>
+        <span class="stat-value display">{{ fmt(animated.todayVoteCount) }}</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">预计今日阅读</span>
-        <span class="stat-value display">{{ stat.estimatedTodayView }}</span>
+        <span class="stat-value display">{{ fmt(animated.estimatedTodayView) }}</span>
         <span class="stat-foot">按当前进度推算</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">预计阅读增长率</span>
-        <span class="stat-value display growth" :class="stat.estimatedGrowth >= 0 ? 'up' : 'down'">
-          {{ stat.estimatedGrowth >= 0 ? '▲' : '▼' }} {{ Math.abs(stat.estimatedGrowth) }}<small>%</small>
+        <span class="stat-value display growth" :class="animated.estimatedGrowth >= 0 ? 'up' : 'down'">
+          {{ animated.estimatedGrowth >= 0 ? '▲' : '▼' }} {{ Math.abs(animated.estimatedGrowth).toFixed(1) }}<small>%</small>
         </span>
         <span class="stat-foot">对比昨日</span>
       </article>
@@ -61,14 +61,44 @@ import * as echarts from 'echarts'
 import { get30Statistic, getStatistic, type StatisticResp } from '../api/stat'
 
 const stat = ref<StatisticResp | null>(null)
+const animated = ref<StatisticResp | null>(null)
 const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
+let animFrame = 0
+
+/** 千分位格式化（整数） */
+function fmt(n: number): string {
+  return Math.round(n).toLocaleString('zh-CN')
+}
+
+/** 数字滚动动画：从 0 缓动到目标值（easeOutCubic） */
+function animateTo(target: StatisticResp, duration = 1400) {
+  cancelAnimationFrame(animFrame)
+  const start = performance.now()
+  const keys = Object.keys(target) as (keyof StatisticResp)[]
+  const tick = (now: number) => {
+    const p = Math.min((now - start) / duration, 1)
+    const eased = 1 - Math.pow(1 - p, 3)
+    const next = {} as StatisticResp
+    for (const k of keys) {
+      next[k] = target[k] * eased
+    }
+    animated.value = next
+    if (p < 1) {
+      animFrame = requestAnimationFrame(tick)
+    } else {
+      animated.value = target // 确保最终值精确
+    }
+  }
+  animFrame = requestAnimationFrame(tick)
+}
 
 onMounted(async () => {
   try {
     // 并行请求汇总统计和近 30 天趋势
     const [statData, days] = await Promise.all([getStatistic(), get30Statistic()])
     stat.value = statData
+    animateTo(statData)
     renderChart(days)
   } catch {
     // 加载失败时保持空态
@@ -76,10 +106,11 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  cancelAnimationFrame(animFrame)
   chart?.dispose() // 组件销毁时释放 ECharts 实例
 })
 
-// 渲染近 30 天趋势折线图（阅读增量 + 点赞增量双系列）
+// 渲染近 30 天趋势折线图（阅读增量 + 点赞增量双系列，渐变面积 + 均值线 + 缩放滑块）
 function renderChart(days: { date: string; viewIncrease: number; voteIncrease: number }[]) {
   if (!chartRef.value) return
   chart = echarts.init(chartRef.value)
@@ -105,7 +136,7 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
       textStyle: { color: '#6f675a' },
       top: 0
     },
-    grid: { left: 40, right: 20, top: 40, bottom: 30 },
+    grid: { left: 48, right: 24, top: 40, bottom: 56 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
@@ -118,6 +149,27 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
       splitLine: { lineStyle: { color: '#efe8d8' } },
       axisLabel: { color: '#6f675a' }
     },
+    dataZoom: [
+      {
+        type: 'slider',
+        bottom: 8,
+        height: 18,
+        borderColor: 'transparent',
+        backgroundColor: '#efe8d8',
+        fillerColor: 'rgba(176, 58, 46, 0.12)',
+        handleStyle: { color: '#b03a2e', borderColor: '#b03a2e' },
+        moveHandleStyle: { color: '#b03a2e' },
+        textStyle: { color: '#6f675a', fontSize: 10 },
+        dataBackground: {
+          lineStyle: { color: '#c9bfaa' },
+          areaStyle: { color: '#e4dcc9' }
+        },
+        selectedDataBackground: {
+          lineStyle: { color: '#b03a2e' },
+          areaStyle: { color: 'rgba(176, 58, 46, 0.15)' }
+        }
+      }
+    ],
     series: [
       {
         name: '阅读增量',
@@ -125,8 +177,21 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
         smooth: true,
         symbol: 'circle',
         symbolSize: 5,
+        lineStyle: { width: 2.5 },
         data: days.map((d) => d.viewIncrease),
-        areaStyle: { opacity: 0.08 }
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(176, 58, 46, 0.28)' },
+            { offset: 1, color: 'rgba(176, 58, 46, 0.02)' }
+          ])
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: 'rgba(176, 58, 46, 0.45)', type: 'dashed', width: 1 },
+          label: { formatter: '均值 {c}', color: '#b03a2e', fontSize: 11, position: 'insideEndTop' },
+          data: [{ type: 'average', name: '阅读均值' }]
+        }
       },
       {
         name: '点赞增量',
@@ -134,7 +199,21 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
         smooth: true,
         symbol: 'circle',
         symbolSize: 5,
-        data: days.map((d) => d.voteIncrease)
+        lineStyle: { width: 2.5 },
+        data: days.map((d) => d.voteIncrease),
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(47, 107, 95, 0.22)' },
+            { offset: 1, color: 'rgba(47, 107, 95, 0.02)' }
+          ])
+        },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: 'rgba(47, 107, 95, 0.45)', type: 'dashed', width: 1 },
+          label: { formatter: '均值 {c}', color: '#2f6b5f', fontSize: 11, position: 'insideEndTop' },
+          data: [{ type: 'average', name: '点赞均值' }]
+        }
       }
     ]
   })
@@ -191,6 +270,12 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
   flex-direction: column;
   gap: 6px;
   animation: page-fade 0.5s ease both;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px rgba(45, 42, 36, 0.10);
 }
 
 .stat-card:nth-child(1) { animation-delay: 0.05s; }
@@ -218,6 +303,7 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
   font-weight: 700;
   color: var(--ink);
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-value small {
@@ -252,7 +338,7 @@ function renderChart(days: { date: string; viewIncrease: number; voteIncrease: n
 }
 
 .chart {
-  height: 320px;
+  height: 340px;
   margin-top: 8px;
 }
 

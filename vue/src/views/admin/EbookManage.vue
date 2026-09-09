@@ -25,7 +25,7 @@
           {{ record.category1Name || '未分类' }}<template v-if="record.category2Name"> / {{ record.category2Name }}</template>
         </template>
         <template #action="{ record }">
-          <a-space>
+          <a-space size="middle">
             <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
             <a-button type="link" size="small" @click="goDocs(record)">文档管理</a-button>
             <a-popconfirm title="确定删除该电子书？" ok-text="删除" cancel-text="取消" @confirm="remove(record)">
@@ -43,9 +43,13 @@
       <div class="ebook-form">
         <div class="cover-section">
           <div class="field-label">封面</div>
-          <a-upload :show-upload-list="false" :custom-request="customUpload" accept="image/*">
-            <div v-if="form.cover" class="cover-box has-cover">
-              <img :src="form.cover" alt="封面" />
+          <a-upload :show-upload-list="false" :custom-request="customUpload" accept="image/*" :disabled="uploading">
+            <div v-if="uploading" class="cover-box uploading">
+              <a-spin size="large" />
+              <div class="uploading-text">上传中...</div>
+            </div>
+            <div v-else-if="coverSrc" class="cover-box has-cover">
+              <img :src="coverSrc" alt="封面" @error="onCoverImgError" />
               <div class="cover-mask">点击更换</div>
             </div>
             <div v-else class="cover-box empty">
@@ -98,6 +102,10 @@ const pageSize = ref(10)
 const total = ref(0)
 const modalOpen = ref(false)
 const allCategories = ref<CategoryRow[]>([])
+const uploading = ref(false)       // 封面上传中
+const coverSrc = ref('')            // 用于显示的封面 URL（重试时可带时间戳，不影响保存）
+const coverRetry = ref(0)           // 封面图片加载重试次数
+
 const form = reactive({
   id: 0,
   name: '',
@@ -108,13 +116,25 @@ const form = reactive({
 })
 
 const columns = [
-  { title: '封面', key: 'cover', width: 80, slots: { customRender: 'cover' } },
+  { title: '封面', key: 'cover', width: 120, slots: { customRender: 'cover' } },
   { title: '名称', dataIndex: 'name', key: 'name' },
-  { title: '分类', key: 'category', width: 160, slots: { customRender: 'category' } },
-  { title: '文档数', dataIndex: 'docCount', key: 'docCount', width: 80 },
-  { title: '阅读', dataIndex: 'viewCount', key: 'viewCount', width: 80 },
-  { title: '点赞', dataIndex: 'voteCount', key: 'voteCount', width: 80 },
-  { title: '操作', key: 'action', width: 220, slots: { customRender: 'action' } }
+  { title: '分类', key: 'category', width: 180, slots: { customRender: 'category' } },
+  {
+    title: '文档数', dataIndex: 'docCount', key: 'docCount', width: 100, align: 'right',
+    customHeaderCell: () => ({ style: { textAlign: 'right' } })
+  },
+  {
+    title: '阅读', dataIndex: 'viewCount', key: 'viewCount', width: 100, align: 'right',
+    customHeaderCell: () => ({ style: { textAlign: 'right' } })
+  },
+  {
+    title: '点赞', dataIndex: 'voteCount', key: 'voteCount', width: 100, align: 'right',
+    customHeaderCell: () => ({ style: { textAlign: 'right' } })
+  },
+  {
+    title: '操作', key: 'action', width: 260, align: 'center', slots: { customRender: 'action' },
+    customHeaderCell: () => ({ style: { textAlign: 'center' } })
+  }
 ]
 
 const pagination = computed(() => ({
@@ -169,6 +189,8 @@ function onTableChange(pg: { current: number; pageSize: number }) {
 // 打开新增弹窗：重置表单
 function openAdd() {
   Object.assign(form, { id: 0, name: '', category1Id: undefined, category2Id: undefined, description: '', cover: '' })
+  coverSrc.value = ''
+  coverRetry.value = 0
   modalOpen.value = true
 }
 
@@ -182,6 +204,8 @@ function openEdit(record: EbookRow) {
     description: record.description,
     cover: record.cover
   })
+  coverSrc.value = record.cover || ''
+  coverRetry.value = 0
   modalOpen.value = true
 }
 
@@ -192,15 +216,30 @@ function onCategory1Change() {
 
 // 自定义封面上传：调用上传接口，成功后将返回的 URL 存入表单
 function customUpload(options: { file: File; onSuccess: (body: unknown) => void; onError: (err: Error) => void }) {
+  uploading.value = true
+  coverRetry.value = 0
   uploadCover(options.file)
     .then((url) => {
       form.cover = url
+      coverSrc.value = url
       options.onSuccess(url)
       message.success('封面上传成功')
     })
     .catch((err) => {
       options.onError(err)
     })
+    .finally(() => {
+      uploading.value = false
+    })
+}
+
+// 封面图片加载失败：加时间戳破缓存自动重试，最多 2 次（dev 环境新写入 public 的文件可能有短暂访问延迟）
+function onCoverImgError() {
+  if (coverRetry.value < 2 && form.cover) {
+    coverRetry.value++
+    const sep = form.cover.includes('?') ? '&' : '?'
+    coverSrc.value = form.cover + sep + '_t=' + Date.now()
+  }
 }
 
 // 保存电子书：新增（id=0）或更新
@@ -267,10 +306,45 @@ function goDocs(record: EbookRow) {
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid var(--line);
+  margin-right: 12px;
 }
 
 .cover-empty {
   color: var(--ink-soft);
+}
+
+/* ===== 表格布局优化 ===== */
+:deep(.ant-table-thead > tr > th) {
+  padding: 14px 16px;
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border-bottom: 2px solid var(--line);
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  padding: 14px 16px;
+}
+
+:deep(.ant-table-tbody > tr:hover > td) {
+  background: #faf7f0;
+}
+
+/* 数字列（第4/5/6列：文档数/阅读/点赞）表头和内容都右对齐 */
+:deep(.ant-table-thead > tr > th:nth-child(4)),
+:deep(.ant-table-thead > tr > th:nth-child(5)),
+:deep(.ant-table-thead > tr > th:nth-child(6)),
+:deep(.ant-table-tbody > tr > td:nth-child(4)),
+:deep(.ant-table-tbody > tr > td:nth-child(5)),
+:deep(.ant-table-tbody > tr > td:nth-child(6)) {
+  text-align: right !important;
+}
+
+/* 操作列（第7列）居中 */
+:deep(.ant-table-thead > tr > th:nth-child(7)),
+:deep(.ant-table-tbody > tr > td:nth-child(7)) {
+  text-align: center !important;
 }
 
 /* ===== 编辑弹窗美化 ===== */
@@ -359,6 +433,29 @@ function goDocs(record: EbookRow) {
   transform: none;
 }
 
+.cover-box.uploading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--paper);
+  border: 1.5px dashed var(--line);
+  box-shadow: none;
+  cursor: default;
+}
+
+.cover-box.uploading:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.uploading-text {
+  font-size: 13px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+}
+
 .cover-plus {
   font-size: 34px;
   color: var(--accent-soft);
@@ -406,7 +503,7 @@ function goDocs(record: EbookRow) {
 }
 
 .fields-section :deep(.ant-input):hover,
-.fields-section :deep(.ant-select-selector:hover) {
+.fields-section :deep(.ant-select-selector):hover {
   border-color: var(--accent-soft);
 }
 
